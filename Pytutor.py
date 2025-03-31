@@ -22,6 +22,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
                     id INTEGER PRIMARY KEY,
                     course_id INTEGER,
                     lesson_name TEXT NOT NULL,
+                    material TEXT NOT NULL,
                     FOREIGN KEY(course_id) REFERENCES Lesson_plans(id)
                 )''')
 connection.commit()
@@ -45,6 +46,13 @@ def on_closing_display_window():
     if displayWindow is not None:
         displayWindow.destroy()
         displayWindow = None
+
+def on_closing_display_window():
+    global displayWindow
+    if displayWindow is not None:
+        displayWindow.destroy()
+        displayWindow = None
+
 
 
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
@@ -72,14 +80,14 @@ def openNewWindow():
 
     def add_courses():
         courses_name = entNewName.get()
-        lesson_amount = int(entNumLessons.get())  # Convert to int for adding lessons
+        lesson_amount = int(entNumLessons.get())
         cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", (courses_name, lesson_amount))
-        course_id = cursor.lastrowid  # Get the ID of the newly inserted course
+        course_id = cursor.lastrowid
+        material=""
 
-        # Add lessons based on the number entered
-        for i in range(lesson_amount):
-            lesson_name = f"Lesson {i+1}"  # Example lesson name (you can modify this logic)
-            cursor.execute("INSERT INTO Courses (course_id, lesson_name) VALUES (?, ?)", (course_id, lesson_name))
+        for lesson in range(lesson_amount):
+            lesson_name = f"Lesson {lesson+1}"
+            cursor.execute("INSERT INTO Courses (course_id, lesson_name, material) VALUES (?, ?, ?)", (course_id, lesson_name, material))
         connection.commit()
 
         update_courses_list()
@@ -99,26 +107,72 @@ def display_lessons(course_id, course_name, courses):
     row_count = 0
     column_count = 0
 
+    def add_lesson():
+        print("uhde")
+
+
     for lesson in lessons:
-        lesson_id, _, lesson_name = lesson
-        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda lesson=lesson: display_lesson_detail(lesson), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+        lesson_id, course_id, lesson_name, material = lesson
+        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda lesson=lesson: open_lesson(lesson), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
         lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
         column_count += 1
         if column_count == 3:
             column_count = 0
             row_count += 1
+    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson, width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+    btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
 
 
-def display_lesson_detail(lesson):
-    lesson_id, course_id, lesson_name = lesson
-    # Here you can implement the functionality to display the details of the lesson
+def open_lesson(lesson):
+    global displayWindow, btSave, btEdit
+    lesson_id, course_id, lesson_name, material = lesson
     print(f"Displaying details for {lesson_name} (Lesson ID: {lesson_id})")
+    if displayWindow is not None:
+        displayWindow.focus()
+        return
+    displayWindow = Toplevel(win)
+    displayWindow.title(lesson_name)
+    displayWindow.geometry("400x400")
+    Label(displayWindow, text=f"{lesson_name}", font="impact").pack()
+
+    Label(displayWindow, text="Material:", font="bold").pack()
+
+    ent_Material = Text(displayWindow, width=30, height=5, relief=RIDGE, bd=10, )
+    ent_Material.insert(END, material)
+    ent_Material.config(state='disabled')
+    ent_Material.pack(pady=5, padx=10, fill=BOTH, expand=True)
+
+    def edit_lesson():
+        global btSave
+        ent_Material.config(state="normal")
+        btEdit.destroy()
+        btSave =Button(displayWindow, text="Save",command=save_lesson, width=10, relief=RAISED, bd=5)
+        btSave.pack(pady=5,side=TOP)
+
+    def save_lesson():
+        global btEdit
+        new_Material = ent_Material.get("1.0", END).strip()
+        lesson_id=course_id
+        cursor.execute("UPDATE Courses SET material =? WHERE id=?",(new_Material, lesson_id))
+        connection.commit()
+        ent_Material.config(state="disabled")
+        btSave.destroy()
+        btEdit = Button(displayWindow, text="Edit", command=edit_lesson, width=10, relief=RAISED, bd=5)
+        btEdit.pack(pady=5, side=TOP)
+    btEdit = Button(displayWindow, text="Edit",command=edit_lesson, width=10, relief=RAISED, bd=5)
+    btEdit.pack(pady=5,side=TOP)
+
+    btDelete = Button(displayWindow, text="Delete", width=10, relief=RAISED, bd=5)
+    btDelete.pack(pady=5,side=BOTTOM)
+
+    displayWindow.protocol()
+    displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
+    displayWindow.minsize(width=400, height=400)
 
 
 def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
-        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",
-                       (courses_per_page, current_page * courses_per_page))
+        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",(courses_per_page, current_page * courses_per_page))
         Lesson_plans = cursor.fetchall()
 
     for widget in frame.winfo_children():
@@ -141,11 +195,10 @@ frame = Frame(win, background="black")
 frame.pack(pady=100)
 
 update_courses_list()
-labelMain = Label(win, text="TIMELESS RECIPES", foreground="white", background="Black", font=("impact", 40))
+labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
 labelMain.place(x=425, y=10)
 btN = Button(win, text="NEW", height=2, width=6, command=openNewWindow, relief=RAISED, bd=5, font="impact")
 btN.place(x=0, y=1)
 
 win.mainloop()
-
 connection.close()
