@@ -7,6 +7,7 @@ import os
 
 current_page = 0
 courses_per_page = 12
+lessons_per_page= 12
 newWindow = None
 displayWindow = None
 
@@ -40,24 +41,15 @@ def on_closing_new_window():
         newWindow.destroy()
         newWindow = None
 
-
 def on_closing_display_window():
     global displayWindow
     if displayWindow is not None:
         displayWindow.destroy()
         displayWindow = None
-
-def on_closing_display_window():
-    global displayWindow
-    if displayWindow is not None:
-        displayWindow.destroy()
-        displayWindow = None
-
-
 
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 
-def openNewWindow():
+def open_new_window():
     global newWindow
 
     if newWindow is not None:
@@ -96,8 +88,13 @@ def openNewWindow():
     btA = Button(newWindow, text="Add", command=add_courses, width=10, relief=RAISED, bd=5)
     btA.pack(pady=5)
 
-
-def display_lessons(course_id, course_name, courses):
+def add_lesson(course_id):
+    update_lesson_list(course_id)
+    print(course_id)
+    
+def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
+    global current_page, lesson_frame
+    current_page = 0
     cursor.execute("SELECT * FROM Courses WHERE course_id = ?", (course_id,))
     lessons = cursor.fetchall()
     frame.destroy()
@@ -106,9 +103,6 @@ def display_lessons(course_id, course_name, courses):
 
     row_count = 0
     column_count = 0
-
-    def add_lesson():
-        print("uhde")
 
 
     for lesson in lessons:
@@ -119,14 +113,12 @@ def display_lessons(course_id, course_name, courses):
         if column_count == 3:
             column_count = 0
             row_count += 1
-    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson, width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson(course_id), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
     btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
-
 
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit
     lesson_id, course_id, lesson_name, material = lesson
-    print(f"Displaying details for {lesson_name} (Lesson ID: {lesson_id})")
     if displayWindow is not None:
         displayWindow.focus()
         return
@@ -146,19 +138,24 @@ def open_lesson(lesson):
         global btSave
         ent_Material.config(state="normal")
         btEdit.destroy()
-        btSave =Button(displayWindow, text="Save",command=save_lesson, width=10, relief=RAISED, bd=5)
+        btSave = Button(displayWindow, text="Save",command=save_lesson, width=10, relief=RAISED, bd=5)
         btSave.pack(pady=5,side=TOP)
 
     def save_lesson():
         global btEdit
+
         new_Material = ent_Material.get("1.0", END).strip()
-        lesson_id=course_id
+        lesson_id, course_id, lesson_name, material = lesson
         cursor.execute("UPDATE Courses SET material =? WHERE id=?",(new_Material, lesson_id))
         connection.commit()
+
         ent_Material.config(state="disabled")
         btSave.destroy()
         btEdit = Button(displayWindow, text="Edit", command=edit_lesson, width=10, relief=RAISED, bd=5)
         btEdit.pack(pady=5, side=TOP)
+        update_lesson_list(course_id)
+
+
     btEdit = Button(displayWindow, text="Edit",command=edit_lesson, width=10, relief=RAISED, bd=5)
     btEdit.pack(pady=5,side=TOP)
 
@@ -169,6 +166,26 @@ def open_lesson(lesson):
     displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
     displayWindow.minsize(width=400, height=400)
 
+def update_lesson_list(course_id):
+    global lesson_frame
+    for widget in lesson_frame.winfo_children():
+        widget.destroy()
+
+    cursor.execute("SELECT * FROM Courses WHERE course_id = ?", (course_id,))
+    lessons = cursor.fetchall()
+    row_count = 0
+    column_count = 0
+
+    for lesson in lessons:
+        lesson_id, course_id, lesson_name, material = lesson
+        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda lesson=lesson: open_lesson(lesson),width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+        lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
+        column_count += 1
+        if column_count == 3:
+            column_count = 0
+            row_count += 1
+    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson, width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+    btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
 
 def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
@@ -190,14 +207,13 @@ def update_courses_list(Lesson_plans=None):
             column_count = 0
             row_count += 1
 
-
 frame = Frame(win, background="black")
 frame.pack(pady=100)
 
 update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
 labelMain.place(x=425, y=10)
-btN = Button(win, text="NEW", height=2, width=6, command=openNewWindow, relief=RAISED, bd=5, font="impact")
+btN = Button(win, text="NEW", height=2, width=6, command=open_new_window, relief=RAISED, bd=5, font="impact")
 btN.place(x=0, y=1)
 
 win.mainloop()
