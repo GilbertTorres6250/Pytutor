@@ -5,6 +5,7 @@ import sqlite3
 from tkinter import messagebox
 import os
 
+
 current_page = 0
 courses_per_page = 12
 lessons_per_page= 12
@@ -33,6 +34,8 @@ win.geometry("630x400")
 win.state("zoomed")
 win.title("PyTutor")
 win.configure(background="black")
+screen_wide= win.winfo_screenwidth()
+screen_tall= win.winfo_screenheight()
 
 
 def on_closing_new_window():
@@ -89,8 +92,11 @@ def open_new_window():
     btA.pack(pady=5)
 
 def add_lesson(course_id):
+    newLesson= "New"
+    material = ""
+    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material) VALUES (?, ?,?)", (course_id, newLesson, material))
+    connection.commit()
     update_lesson_list(course_id)
-    print(course_id)
 
 def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
     global current_page, lesson_frame
@@ -99,7 +105,8 @@ def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgy
     lesson_frame = Frame(win, background="red")
     lesson_frame.pack(pady=100)
     update_lesson_list(course_id)
-
+    btLA = Button(win, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=20, font="Arial", relief=RAISED, bd=5)
+    btLA.place(x=screen_wide*.8,y=10)
 
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit
@@ -169,8 +176,6 @@ def update_lesson_list(course_id):
         if column_count == 3:
             column_count = 0
             row_count += 1
-    btLA= Button(lesson_frame, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
-    btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
 
 def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
@@ -197,7 +202,7 @@ frame.pack(pady=100)
 
 update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
-labelMain.place(x=425, y=10)
+labelMain.place(x=screen_wide*.4, y=10)
 btN = Button(win, text="NEW", height=2, width=6, command=open_new_window, relief=RAISED, bd=5, font="impact")
 btN.place(x=0, y=1)
 
