@@ -91,30 +91,15 @@ def open_new_window():
 def add_lesson(course_id):
     update_lesson_list(course_id)
     print(course_id)
-    
+
 def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
     global current_page, lesson_frame
     current_page = 0
-    cursor.execute("SELECT * FROM Courses WHERE course_id = ?", (course_id,))
-    lessons = cursor.fetchall()
     frame.destroy()
     lesson_frame = Frame(win, background="red")
     lesson_frame.pack(pady=100)
+    update_lesson_list(course_id)
 
-    row_count = 0
-    column_count = 0
-
-
-    for lesson in lessons:
-        lesson_id, course_id, lesson_name, material = lesson
-        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda lesson=lesson: open_lesson(lesson), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
-        lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
-        column_count += 1
-        if column_count == 3:
-            column_count = 0
-            row_count += 1
-    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson(course_id), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
-    btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
 
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit
@@ -178,13 +163,13 @@ def update_lesson_list(course_id):
 
     for lesson in lessons:
         lesson_id, course_id, lesson_name, material = lesson
-        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda lesson=lesson: open_lesson(lesson),width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda l=lesson: open_lesson(l),width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
         lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
         column_count += 1
         if column_count == 3:
             column_count = 0
             row_count += 1
-    btLA= Button(lesson_frame, text="Add Lesson", command=add_lesson, width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+    btLA= Button(lesson_frame, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
     btLA.grid(row=row_count, column=column_count, padx=10, pady=10)
 
 def update_courses_list(Lesson_plans=None):
