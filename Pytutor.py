@@ -1,10 +1,5 @@
-from tkinter import filedialog
 from tkinter import *
-from tkinter import ttk
 import sqlite3
-from tkinter import messagebox
-import os
-
 
 current_page = 0
 courses_per_page = 12
@@ -52,7 +47,7 @@ def on_closing_display_window():
 
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 
-def open_new_window():
+def open_new_window(event=None):
     global newWindow
 
     if newWindow is not None:
@@ -99,14 +94,24 @@ def add_lesson(course_id):
     update_lesson_list(course_id)
 
 def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_page, lesson_frame
+    global current_page, lesson_frame, btB, btLA
     current_page = 0
-    frame.destroy()
+    btN.place_forget()
+    frame.pack_forget()
     lesson_frame = Frame(win, background="red")
     lesson_frame.pack(pady=100)
     update_lesson_list(course_id)
     btLA = Button(win, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=20, font="Arial", relief=RAISED, bd=5)
-    btLA.place(x=screen_wide*.8,y=10)
+    btLA.place(x=screen_wide*.845,y=screen_tall*.01)
+    btB = Button(win, text="Back", command= back, width=10, padx=20, pady=20,font="Arial", relief=RAISED, bd=5)
+    btB.place(x=screen_wide * .03, y=screen_tall * .01)
+
+def back():
+    lesson_frame.pack_forget()
+    frame.pack(framePack)
+    btB.place_forget()
+    btLA.place_forget()
+    btN.place(NPlacement)
 
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit
@@ -129,9 +134,10 @@ def open_lesson(lesson):
     def edit_lesson():
         global btSave
         ent_Material.config(state="normal")
-        btEdit.destroy()
+        btnfo=btEdit.pack_info()
+        btEdit.pack_forget()
         btSave = Button(displayWindow, text="Save",command=save_lesson, width=10, relief=RAISED, bd=5)
-        btSave.pack(pady=5,side=TOP)
+        btSave.pack(btnfo)
 
     def save_lesson():
         global btEdit
@@ -142,9 +148,10 @@ def open_lesson(lesson):
         connection.commit()
 
         ent_Material.config(state="disabled")
-        btSave.destroy()
+        btnfo= btSave.pack_info()
+        btSave.pack_forget()
         btEdit = Button(displayWindow, text="Edit", command=edit_lesson, width=10, relief=RAISED, bd=5)
-        btEdit.pack(pady=5, side=TOP)
+        btEdit.pack(btnfo)
         update_lesson_list(course_id)
 
 
@@ -159,7 +166,6 @@ def open_lesson(lesson):
     displayWindow.minsize(width=400, height=400)
 
 def update_lesson_list(course_id):
-    global lesson_frame
     for widget in lesson_frame.winfo_children():
         widget.destroy()
 
@@ -199,12 +205,14 @@ def update_courses_list(Lesson_plans=None):
 
 frame = Frame(win, background="black")
 frame.pack(pady=100)
+framePack=frame.pack_info()
 
 update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
 labelMain.place(x=screen_wide*.4, y=10)
 btN = Button(win, text="NEW", height=2, width=6, command=open_new_window, relief=RAISED, bd=5, font="impact")
-btN.place(x=0, y=1)
+btN.place(x=screen_wide*.005, y=screen_tall*.01)
+NPlacement=btN.place_info()
 
 win.mainloop()
 connection.close()
