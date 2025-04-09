@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import ttk
 import sqlite3
 
 current_page = 0
@@ -25,7 +26,6 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
 connection.commit()
 
 win = Tk()
-win.geometry("630x400")
 win.state("zoomed")
 win.title("PyTutor")
 win.configure(background="black")
@@ -98,13 +98,13 @@ def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgy
     current_page = 0
     btN.place_forget()
     frame.pack_forget()
-    lesson_frame = Frame(win, background="red")
+    lesson_frame = Frame(win, background="black")
     lesson_frame.pack(pady=100)
     update_lesson_list(course_id)
     btLA = Button(win, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=20, font="Arial", relief=RAISED, bd=5)
-    btLA.place(x=screen_wide*.845,y=screen_tall*.01)
+    btLA.place(x=screen_wide*.84,y=screen_tall*.01)
     btB = Button(win, text="Back", command= back, width=10, padx=20, pady=20,font="Arial", relief=RAISED, bd=5)
-    btB.place(x=screen_wide * .03, y=screen_tall * .01)
+    btB.place(x=screen_wide * .035, y=screen_tall * .01)
 
 def back():
     lesson_frame.pack_forget()
@@ -114,7 +114,7 @@ def back():
     btN.place(NPlacement)
 
 def open_lesson(lesson):
-    global displayWindow, btSave, btEdit
+    global displayWindow, btSave, btEdit, lessonLabel
     lesson_id, course_id, lesson_name, material = lesson
     if displayWindow is not None:
         displayWindow.focus()
@@ -122,9 +122,8 @@ def open_lesson(lesson):
     displayWindow = Toplevel(win)
     displayWindow.title(lesson_name)
     displayWindow.geometry("400x400")
-    Label(displayWindow, text=f"{lesson_name}", font="impact").pack()
-
-    Label(displayWindow, text="Material:", font="bold").pack()
+    lessonLabel= Label(displayWindow, text=f"{lesson_name}", font="impact")
+    lessonLabel.pack(side=TOP)
 
     ent_Material = Text(displayWindow, width=30, height=5, relief=RIDGE, bd=10, )
     ent_Material.insert(END, material)
@@ -132,7 +131,16 @@ def open_lesson(lesson):
     ent_Material.pack(pady=5, padx=10, fill=BOTH, expand=True)
 
     def edit_lesson():
-        global btSave
+        global btSave, entName
+
+        lessonLabel.pack_forget()
+        entName = Entry(displayWindow, font="impact",justify=CENTER)
+        entName.insert(END, lesson_name)
+        entName.pack(side= TOP, pady=1)
+
+        matfo=ent_Material.pack_info()
+        ent_Material.pack(matfo)
+
         ent_Material.config(state="normal")
         btnfo=btEdit.pack_info()
         btEdit.pack_forget()
@@ -143,9 +151,18 @@ def open_lesson(lesson):
         global btEdit
 
         new_Material = ent_Material.get("1.0", END).strip()
+        new_Name = entName.get().strip()
         lesson_id, course_id, lesson_name, material = lesson
         cursor.execute("UPDATE Courses SET material =? WHERE id=?",(new_Material, lesson_id))
+        cursor.execute("UPDATE Courses SET lesson_name =? WHERE id=?",(new_Name, lesson_id))
         connection.commit()
+
+        entName.pack_forget()
+        lessonLabel.configure(text=new_Name)
+        lessonLabel.pack(side= TOP)
+
+        matfo = ent_Material.pack_info()
+        ent_Material.pack(matfo)
 
         ent_Material.config(state="disabled")
         btnfo= btSave.pack_info()
@@ -154,11 +171,17 @@ def open_lesson(lesson):
         btEdit.pack(btnfo)
         update_lesson_list(course_id)
 
+    def delete_lesson():
+        cursor.execute("DELETE FROM Courses WHERE id=?", (lesson_id,))
+        connection.commit()
+        on_closing_display_window()
+        update_lesson_list(course_id)
+
 
     btEdit = Button(displayWindow, text="Edit",command=edit_lesson, width=10, relief=RAISED, bd=5)
     btEdit.pack(pady=5,side=TOP)
 
-    btDelete = Button(displayWindow, text="Delete", width=10, relief=RAISED, bd=5)
+    btDelete = Button(displayWindow, text="Delete", command= delete_lesson, width=10, relief=RAISED, bd=5)
     btDelete.pack(pady=5,side=BOTTOM)
 
     displayWindow.protocol()
@@ -211,7 +234,7 @@ update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
 labelMain.place(x=screen_wide*.4, y=10)
 btN = Button(win, text="NEW", height=2, width=6, command=open_new_window, relief=RAISED, bd=5, font="impact")
-btN.place(x=screen_wide*.005, y=screen_tall*.01)
+btN.place(x=screen_wide * .035, y=screen_tall * .01)
 NPlacement=btN.place_info()
 
 win.mainloop()
