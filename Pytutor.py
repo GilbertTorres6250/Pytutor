@@ -67,6 +67,7 @@ def open_new_window(event=None):
     text.set("Number of lessons")
     entNumLessons = Entry(newWindow, relief=RIDGE, bd=5, textvariable=text)
     entNumLessons.pack(pady=5)
+    newWindow.protocol("WM_DELETE_WINDOW", on_closing_new_window)
 
     def add_courses():
         courses_name = entNewName.get()
@@ -101,10 +102,10 @@ def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgy
     lesson_frame = Frame(win, background="black")
     lesson_frame.pack(pady=100)
     update_lesson_list(course_id)
-    btLA = Button(win, text="Add Lesson", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=20, font="Arial", relief=RAISED, bd=5)
-    btLA.place(x=screen_wide*.84,y=screen_tall*.01)
-    btB = Button(win, text="Back", command= back, width=10, padx=20, pady=20,font="Arial", relief=RAISED, bd=5)
-    btB.place(x=screen_wide * .035, y=screen_tall * .01)
+    btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=10, font="Impact", relief=RAISED, bd=5)
+    btLA.place(x=screen_wide*.845,y=screen_tall*.02)
+    btB = Button(win, text="BACK", command= back, width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
+    btB.place(x=screen_wide * .035, y=screen_tall * .02)
 
 def back():
     lesson_frame.pack_forget()
@@ -122,7 +123,8 @@ def open_lesson(lesson):
     displayWindow = Toplevel(win)
     displayWindow.title(lesson_name)
     displayWindow.geometry("400x400")
-    lessonLabel= Label(displayWindow, text=f"{lesson_name}", font="impact")
+    displayWindow.configure(background="black")
+    lessonLabel= Label(displayWindow, text=f"{lesson_name}", font="impact", background="black", foreground="white")
     lessonLabel.pack(side=TOP)
 
     ent_Material = Text(displayWindow, width=30, height=5, relief=RIDGE, bd=10, )
@@ -232,9 +234,9 @@ framePack=frame.pack_info()
 
 update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="Black", font=("impact", 40))
-labelMain.place(x=screen_wide*.4, y=10)
-btN = Button(win, text="NEW", height=2, width=6, command=open_new_window, relief=RAISED, bd=5, font="impact")
-btN.place(x=screen_wide * .035, y=screen_tall * .01)
+labelMain.place(x=screen_wide*.42, y=10)
+btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=open_new_window, relief=RAISED, bd=5, font="impact")
+btN.place(x=screen_wide * .035, y=screen_tall * .02)
 NPlacement=btN.place_info()
 
 win.mainloop()
