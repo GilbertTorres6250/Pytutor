@@ -7,6 +7,7 @@ courses_per_page = 12
 lessons_per_page= 12
 newWindow = None
 displayWindow = None
+quizWindow = None
 
 # WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE
 connection = sqlite3.connect('Lesson_plans.db')
@@ -21,8 +22,19 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
                     course_id INTEGER,
                     lesson_name TEXT NOT NULL,
                     material TEXT NOT NULL,
+                    type TEXT DEFAULT 'lesson',
                     FOREIGN KEY(course_id) REFERENCES Lesson_plans(id)
                 )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS Quizes (
+                    id INTEGER PRIMARY KEY,
+                    course_id INTEGER,
+                    correct INTEGER,
+                    question TEXT,
+                    answer TEXT,
+                    FOREIGN KEY(course_id) REFERENCES Lesson_plans(id)
+                )''')
+
+
 connection.commit()
 
 win = Tk()
@@ -45,11 +57,15 @@ def on_closing_display_window():
         displayWindow.destroy()
         displayWindow = None
 
+def on_closing_quiz_window():
+    global quizWindow
+    if quizWindow is not None:
+        quizWindow.destroy()
+        quizWindow = None
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 
 def open_new_window(event=None):
     global newWindow
-
     if newWindow is not None:
         newWindow.focus()
         return
@@ -88,14 +104,21 @@ def open_new_window(event=None):
     btA.pack(pady=5)
 
 def add_lesson(course_id):
-    newLesson= "New"
+    newLesson = "New"
     material = ""
-    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material) VALUES (?, ?,?)", (course_id, newLesson, material))
+    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, material, 'lesson'))
     connection.commit()
     update_lesson_list(course_id)
 
-def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_page, lesson_frame, btB, btLA
+def add_quiz(course_id):
+    newLesson = "Quiz"
+    material = ""
+    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, material, 'quiz'))
+    connection.commit()
+    update_lesson_list(course_id)
+
+def display_lessons(course_id, course_name, courses, ):#xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
+    global current_page, lesson_frame, btB, btLA, btQA
     current_page = 0
     btN.place_forget()
     frame.pack_forget()
@@ -104,6 +127,8 @@ def display_lessons(course_id, course_name, courses):#xfcgvcftgvhvugytcryvbhuvgy
     update_lesson_list(course_id)
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20,pady=10, font="Impact", relief=RAISED, bd=5)
     btLA.place(x=screen_wide*.845,y=screen_tall*.02)
+    btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20,pady=10, font="Impact", relief=RAISED, bd=5)
+    btQA.place(x=screen_wide*.7,y=screen_tall*.02)
     btB = Button(win, text="BACK", command= back, width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
     btB.place(x=screen_wide * .035, y=screen_tall * .02)
 
@@ -112,17 +137,79 @@ def back():
     frame.pack(framePack)
     btB.place_forget()
     btLA.place_forget()
+    btQA.place_forget()
     btN.place(NPlacement)
+
+def display_quiz(lesson):
+    global quizWindow, btSave, btEdit, lessonLabel
+    lesson_id, course_id, lesson_name, material, type = lesson
+    if quizWindow is not None:
+        quizWindow.focus()
+        return
+
+    quizWindow = Toplevel(win)
+    quizWindow.title("Quiz Maker")
+    quizWindow.geometry("800x800")
+    quizWindow.configure(background="black")
+
+    lessonLabel = Label(quizWindow, text=f"{lesson_name}", font="impact", background="black", foreground="white")
+    lessonLabel.pack(side=TOP)
+
+    def edit_lesson():
+        global btSave, entName
+
+        lessonLabel.pack_forget()
+        entName = Entry(quizWindow, font="impact", justify=CENTER)
+        entName.insert(END, lesson_name)
+        entName.pack(side=TOP, pady=1)
+
+        btnfo = btEdit.pack_info()
+        btEdit.pack_forget()
+        btSave = Button(quizWindow, text="Save", command=save_lesson, width=10, relief=RAISED, bd=5)
+        btSave.pack(btnfo)
+        btDelete.pack(btDelete.pack_info())
+
+    def save_lesson():
+        global btEdit
+
+        new_Name = entName.get().strip()
+        lesson_id, course_id, lesson_name, material, type = lesson
+        cursor.execute("UPDATE Courses SET lesson_name =? WHERE id=?", (new_Name, lesson_id))
+        connection.commit()
+
+        entName.pack_forget()
+        lessonLabel.configure(text=new_Name)
+        lessonLabel.pack(side=TOP)
+
+        btnfo = btSave.pack_info()
+        btSave.pack_forget()
+        btEdit = Button(quizWindow, text="Edit", command=edit_lesson, width=10, relief=RAISED, bd=5)
+        btEdit.pack(btnfo)
+        btDelete.pack(btDelete.pack_info())
+        update_lesson_list(course_id)
+
+    def delete_lesson():
+        cursor.execute("DELETE FROM Courses WHERE id=?", (lesson_id,))
+        connection.commit()
+        on_closing_quiz_window()
+        update_lesson_list(course_id)
+
+    btEdit = Button(quizWindow, text="Edit", command=edit_lesson, width=10, relief=RAISED, bd=5)
+    btEdit.pack(pady=5, side=TOP)
+
+    btDelete = Button(quizWindow, text="Delete", command=delete_lesson, width=10, relief=RAISED, bd=5)
+    btDelete.pack(pady=5, side=TOP)
+    quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
 
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit, lessonLabel
-    lesson_id, course_id, lesson_name, material = lesson
+    lesson_id, course_id, lesson_name, material, type = lesson
     if displayWindow is not None:
         displayWindow.focus()
         return
     displayWindow = Toplevel(win)
     displayWindow.title(lesson_name)
-    displayWindow.geometry("400x400")
+    displayWindow.geometry("600x600")
     displayWindow.configure(background="black")
     lessonLabel= Label(displayWindow, text=f"{lesson_name}", font="impact", background="black", foreground="white")
     lessonLabel.pack(side=TOP)
@@ -154,7 +241,7 @@ def open_lesson(lesson):
 
         new_Material = ent_Material.get("1.0", END).strip()
         new_Name = entName.get().strip()
-        lesson_id, course_id, lesson_name, material = lesson
+        lesson_id, course_id, lesson_name, material, type = lesson
         cursor.execute("UPDATE Courses SET material =? WHERE id=?",(new_Material, lesson_id))
         cursor.execute("UPDATE Courses SET lesson_name =? WHERE id=?",(new_Name, lesson_id))
         connection.commit()
@@ -200,9 +287,21 @@ def update_lesson_list(course_id):
     column_count = 0
 
     for lesson in lessons:
-        lesson_id, course_id, lesson_name, material = lesson
-        lesson_button = Button(lesson_frame, text=lesson_name, command=lambda l=lesson: open_lesson(l),width=30, padx=20, pady=20, font="Arial", relief=RAISED, bd=5)
+        lesson_id, course_id, lesson_name, material, type = lesson
+        is_quiz = (type == 'quiz')
+
+        if is_quiz == True:
+            button_text = f"📝 {lesson_name}"
+            button_color = "grey"
+            button_command = lambda q=lesson: display_quiz(q)
+        else:
+            button_text= lesson_name
+            button_color="SystemButtonFace"
+            button_command = lambda l=lesson: open_lesson(l)
+
+        lesson_button = Button(lesson_frame,text=button_text,command=button_command,width=30,padx=20,pady=20,font="Arial",relief=RAISED,bd=5,bg=button_color)
         lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
+
         column_count += 1
         if column_count == 3:
             column_count = 0
