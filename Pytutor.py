@@ -36,6 +36,7 @@ connection.commit()
 
 win = Tk()
 win.state("zoomed")
+win.geometry("630x400")
 win.title("PyTutor")
 win.configure(background="black")
 screen_wide= win.winfo_screenwidth()
@@ -93,181 +94,6 @@ def display_lessons(course_id, course_name, courses, ):#xfcgvcftgvhvugytcryvbhuv
     btQA.place(x=screen_wide*.7,y=screen_tall*.02)
     btB = Button(win, text="BACK", command= back, width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
     btB.place(x=screen_wide * .035, y=screen_tall * .02)
-
-def open_quiz(lesson):
-    global quizWindow, lessonLabel
-    lesson_id, course_id, lesson_name, material, type = lesson
-    if quizWindow is not None:
-        quizWindow.focus()
-        return
-
-    cursor.execute("SELECT id, question, answer, correct FROM Quizes WHERE lesson_id=?", (lesson_id,))
-    quiz_data = cursor.fetchall()
-
-    quizWindow = Toplevel(win)
-    quizWindow.title("Quiz")
-    quizWindow.state("zoomed")
-    quizWindow.configure(background="black")
-
-    lessonLabel = Label(quizWindow, text=f"{lesson_name}", font=("impact", 25), background="black", foreground="white")
-    lessonLabel.pack(side=TOP)
-
-    quiz_frames = []
-
-    for quiz_id, question, answer, correct in quiz_data:
-        question_frame = Frame(quizWindow, background="red", pady=10)
-        question_frame.pack()
-
-        question_label = Label(question_frame, text=f"Q: {question}", font=("Impact", 15), background="black",foreground="white", wraplength=800, justify=LEFT)
-        question_label.pack()
-
-        options = answer.split("|")
-        selected = IntVar(value=int(correct))
-
-        radio_buttons = []
-        for i, opt in enumerate(options, 1):
-            rb = Radiobutton(question_frame, text=opt.strip(), variable=selected, value=i,font=("Arial", 12), background="black", foreground="white", selectcolor="red",state="disabled")
-            rb.pack(anchor="w", padx=20)
-            radio_buttons.append(rb)
-
-        # Store everything so we can edit/save later
-        quiz_frames.append({
-            "frame": question_frame,
-            "quiz_id": quiz_id,
-            "question_label": question_label,
-            "radio_buttons": radio_buttons,
-            "selected": selected,
-            "options": options
-        })
-
-    def edit_quizzes():
-        global dropper,btn_add_ans,btn_remove_ans
-        for qf in quiz_frames:
-            # Replace question label with an Entry
-            q_text = qf["question_label"].cget("text")[3:].strip()  # remove "Q: "
-            ent = Entry(qf["frame"], font=("Arial", 12), width=80)
-            ent.insert(END, q_text)
-            qf["question_label"].pack_forget()
-            ent.pack()
-            qf["ent_question"] = ent
-
-            # Remove existing radio buttons
-            for rb in qf["radio_buttons"]:
-                rb.pack_forget()
-
-            # Add editable Entries for each existing answer
-            new_opts = []
-            for opt_text in qf["options"]:
-                opt_entry = Entry(qf["frame"], font=("Arial", 12), width=60)
-                opt_entry.insert(END, opt_text.strip())
-                opt_entry.pack(anchor="w", padx=20)
-                new_opts.append(opt_entry)
-
-            qf["ent_options"] = new_opts
-
-            # Function to update correct dropdown list
-            def refresh_correct_dropdown(q):
-                q["correct_dropdown"].configure(values=[str(i + 1) for i in range(len(q["ent_options"]))])
-                if int(q["ent_correct"].get()) > len(q["ent_options"]):
-                    q["ent_correct"].set("1")
-
-            # Function to add a new answer
-            def add_answer_field(q=qf):
-                new_opt_entry = Entry(q["frame"], font=("Arial", 12), width=60)
-                new_opt_entry.insert(END, "New Option")
-                new_opt_entry.pack(anchor="w", padx=20)
-                q["ent_options"].append(new_opt_entry)
-                refresh_correct_dropdown(q)
-
-            # Function to remove the last answer
-            def remove_last_answer(q=qf):
-                if len(q["ent_options"]) > 1:  # optional safety: keep at least 1
-                    last_entry = q["ent_options"].pop()
-                    last_entry.destroy()
-                    refresh_correct_dropdown(q)
-
-            # Create the correct answer dropdown
-            correct_var = StringVar(value=str(qf["selected"].get()))
-            dropper = ttk.Combobox(qf["frame"], textvariable=correct_var,values=[str(i + 1) for i in range(len(new_opts))],state="readonly", width=5)
-            dropper.pack(anchor="w", padx=20)
-            qf["ent_correct"] = correct_var
-            qf["correct_dropdown"] = dropper
-
-            # Buttons to add and remove answers
-            btn_add_ans = Button(qf["frame"], text="➕ Add Answer", command=lambda q=qf: add_answer_field(q))
-            btn_add_ans.pack(anchor="w", padx=20, pady=5)
-
-            btn_remove_ans = Button(qf["frame"], text="➖ Remove Last Answer",command=lambda q=qf: remove_last_answer(q))
-            btn_remove_ans.pack(anchor="w", padx=20, pady=5)
-
-        btEdit.pack_forget()
-        btSave.pack(pady=5, side=TOP)
-        btDelete.pack(btDelete.pack_info())
-
-    def save_quizzes():
-        for qf in quiz_frames:
-            dropper.pack_forget()
-            btn_add_ans.pack_forget()
-            btn_remove_ans.pack_forget()
-            quiz_id = qf["quiz_id"]
-            new_question = qf["ent_question"].get().strip()
-            new_options = [e.get().strip() for e in qf["ent_options"]]
-            new_correct = int(qf["ent_correct"].get().strip())
-
-            new_answer_str = "|".join(new_options)
-
-            # Update DB
-            cursor.execute(
-                "UPDATE Quizes SET question=?, answer=?, correct=? WHERE id=?",
-                (new_question, new_answer_str, new_correct, quiz_id)
-            )
-
-            # Clear old widgets (edit mode)
-            qf["ent_question"].destroy()
-            for e in qf["ent_options"]:
-                e.destroy()
-            # Remove dropper
-            qf["ent_correct"].widget = None
-
-            # Rebuild static view (label + radio buttons)
-            question_label = Label(qf["frame"], text=f"Q: {new_question}", font=("Impact", 15),
-                                   background="black", foreground="white", wraplength=800, justify=LEFT)
-            question_label.pack()
-            qf["question_label"] = question_label
-
-            selected = IntVar(value=new_correct)
-            qf["selected"] = selected
-            radio_buttons = []
-            for i, opt in enumerate(new_options, 1):
-                rb = Radiobutton(qf["frame"], text=opt, variable=selected, value=i,font=("Arial", 12), background="black", foreground="white", selectcolor="red",state="disabled")
-                rb.pack(anchor="w", padx=20)
-                radio_buttons.append(rb)
-            qf["radio_buttons"] = radio_buttons
-            qf["options"] = new_options
-
-        connection.commit()
-
-        btSave.pack_forget()
-        btn_add_ans.pack_forget()
-        btEdit.pack(pady=5, side=TOP)
-        btDelete.pack(btDelete.pack_info())
-
-    def delete_lesson():
-        cursor.execute("DELETE FROM Courses WHERE id=?", (lesson_id,))
-        cursor.execute("DELETE FROM Quizes WHERE lesson_id=?", (lesson_id,))
-        connection.commit()
-        on_closing_quiz_window()
-        update_lesson_list(course_id)
-
-    btEdit = Button(quizWindow, text="Edit", command=edit_quizzes, width=10, relief=RAISED, bd=5)
-    btEdit.pack(pady=5, side=TOP)
-
-    btSave = Button(quizWindow, text="Save", command=save_quizzes, width=10, relief=RAISED, bd=5)
-    btSave.pack_forget()
-
-    btDelete = Button(quizWindow, text="Delete", command=delete_lesson, width=10, relief=RAISED, bd=5)
-    btDelete.pack(pady=5, side=TOP)
-    quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
 
 def back():
     lesson_frame.pack_forget()
@@ -342,7 +168,6 @@ def open_lesson(lesson):
         on_closing_display_window()
         update_lesson_list(course_id)
 
-
     btEdit = Button(displayWindow, text="Edit",command=edit_lesson, width=10, relief=RAISED, bd=5)
     btEdit.pack(pady=5,side=TOP)
 
@@ -351,6 +176,148 @@ def open_lesson(lesson):
 
     displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
     displayWindow.minsize(width=400, height=400)
+
+def open_quiz(lesson):
+    global quizWindow, btSave, btEdit, lessonLabel, current_question
+    lesson_id, course_id, lesson_name, material, type = lesson
+    current_question=0
+    cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+    quizzes = cursor.fetchall()
+    if quizWindow is not None:
+        quizWindow.focus()
+        return
+
+    quizWindow = Toplevel(win)
+    quizWindow.title("Quiz Maker")
+    quizWindow.geometry("800x800")
+    quizWindow.configure(background="black")
+
+    lessonLabel = Label(quizWindow, text=f"{lesson_name}", font=("impact", 25), background="black", foreground="white")
+    lessonLabel.pack(side=TOP)
+
+    questionlabel = Label(quizWindow, font=("Arial", 18), bg="black", fg="white", wraplength=600)
+    questionlabel.pack(pady=10)
+
+    answerslabel = Label(quizWindow, font=("Arial", 16), bg="black", fg="lightgray", justify=LEFT)
+    answerslabel.pack(pady=5)
+
+    correctlabel = Label(quizWindow, font=("Arial", 16), bg="black", fg="lightgreen")
+    correctlabel.pack(pady=5)
+
+    def edit_quiz():
+        global entName, entQuestion, entAnswers, entCorrect
+        quiz = quizzes[current_question]
+        quiz_id, _, question, answer, correct = quiz
+
+        entName= Entry(quizWindow, font=("Arial", 18))
+        entName.insert(END, lesson_name)
+        entName.pack(lessonLabel.pack_info())
+
+        entQuestion= Entry(quizWindow, font=("Arial", 16), width=80)
+        entQuestion.insert(0, question.strip())
+        entQuestion.pack(pady=5)
+
+        entAnswers= Entry(quizWindow, font=("Arial", 16), width=80)
+        entAnswers.insert(0, answer.strip())
+        entAnswers.pack(pady=5)
+
+        entCorrect = Entry(quizWindow, font=("Arial", 16), width=10)
+        entCorrect.insert(0, str(correct))
+        entCorrect.pack(pady=5)
+
+        lessonLabel.pack_forget()
+        questionlabel.pack_forget()
+        answerslabel.pack_forget()
+        correctlabel.pack_forget()
+        btEdit.pack_forget()
+
+        btAddAns = Button(quizWindow, text="+ Answer")
+        btAddAns.pack( padx=20, pady=5)
+
+        btRemoveAns = Button(quizWindow, text="- Answer")
+        btRemoveAns.pack(padx=20, pady=5)
+
+        btSave.pack(pady=10)
+        btDelete.pack(btDelete.pack_info())
+
+
+
+    def save_quiz():
+        new_name=entName.get().strip()
+        new_question = entQuestion.get().strip()
+        new_answers = entAnswers.get().strip()
+        new_correct = entCorrect.get().strip()
+
+        quiz = quizzes[current_question]
+        quiz_id = quiz[0]
+
+        cursor.execute("UPDATE Quizes SET question=?, answer=?, correct=? WHERE id=?",
+                       (new_question, new_answers, int(new_correct), quiz_id))
+        connection.commit()
+
+        cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+        quizzes.clear()
+        quizzes.extend(cursor.fetchall())
+
+
+        questionlabel.pack(pady=10)
+        answerslabel.pack(pady=5)
+        correctlabel.pack(pady=5)
+        btEdit.pack(pady=10)
+        btDelete.pack(btDelete.pack_info())
+
+        change_quiz_page(current_question)
+
+    def delete_lesson():
+        cursor.execute("DELETE FROM Courses WHERE id=?", (lesson_id,))
+        connection.commit()
+        on_closing_quiz_window()
+        update_lesson_list(course_id)
+
+    def change_quiz_page(index):
+        if 0 <= index < len(quizzes):
+            quiz_id, lesson_id_fk, question, answer, correct = quizzes[index]
+            questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
+
+            options = answer.strip().split("|")
+            answers_text = "\n".join([f"{i + 1}. {opt.strip()}" for i, opt in enumerate(options)])
+            answerslabel.config(text=answers_text)
+
+            correctlabel.config(text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
+
+    def previous_question():
+        global current_question
+        if current_question > 0:
+            current_question -= 1
+            change_quiz_page(current_question)
+
+    def next_question():
+        global current_question
+        if current_question < len(quizzes) - 1:
+            current_question += 1
+            change_quiz_page(current_question)
+
+    change_quiz_page(current_question)
+
+    btEdit = Button(quizWindow, text="Edit", command=edit_quiz, width=10, relief=RAISED, bd=5)
+    btEdit.pack(pady=5, side=TOP)
+
+    btDelete = Button(quizWindow, text="Delete", command=delete_lesson, width=10, relief=RAISED, bd=5)
+    btDelete.pack(pady=5, side=TOP)
+
+    btSave = Button(quizWindow, text="Save", command=save_quiz, width=10, relief=RAISED, bd=5)
+    btSave.pack_forget()
+
+    nav_frame = Frame(quizWindow, bg="red")
+    nav_frame.pack(side=BOTTOM, fill=X, pady=20)
+
+    btQP = Button(quizWindow, text="←", font=("Impact", 18), width=4, padx=30, pady=2, relief=RAISED, bd=5,command=previous_question)
+    btQP.place(x=quizWindow.winfo_screenheight()*.1,y=quizWindow.winfo_screenheight()*.8)
+
+    btQN = Button(quizWindow, text="→", font=("Impact", 18), width=4, padx=30, pady=2, relief=RAISED, bd=5,command=next_question)
+    btQN.place(x=quizWindow.winfo_screenheight()*.9,y=quizWindow.winfo_screenheight()*.8)
+    quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
+    quizWindow.resizable(0, 0)
 
 def update_lesson_list(course_id):
     for widget in lesson_frame.winfo_children():
@@ -366,11 +333,11 @@ def update_lesson_list(course_id):
         is_quiz = (type == 'quiz')
 
         if is_quiz == True:
-            button_text = f"📝 {lesson_name}"
+            button_text = f"★{lesson_name}"
             button_color = "grey"
             button_command = lambda q=lesson: open_quiz(q)
         else:
-            button_text= lesson_name
+            button_text= f"☆{lesson_name}"
             button_color="SystemButtonFace"
             button_command = lambda l=lesson: open_lesson(l)
 
