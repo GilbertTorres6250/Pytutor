@@ -30,7 +30,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Quizes (
                     question TEXT NOT NULL,
                     answer TEXT NOT NULL,
                     correct INTEGER NOT NULL,
-                    FOREIGN KEY(lesson_id) REFERENCES Courses(id)
+                    FOREIGN KEY(lesson_id) REFERENCES Courses(id) ON DELETE CASCADE
                 )''')
 connection.commit()
 
@@ -41,7 +41,6 @@ win.title("PyTutor")
 win.configure(background="black")
 screen_wide = win.winfo_screenwidth()
 screen_tall = win.winfo_screenheight()
-
 
 def on_closing_display_window():
     global displayWindow
@@ -54,8 +53,8 @@ def on_closing_quiz_window():
     if quizWindow is not None:
         quizWindow.destroy()
         quizWindow = None
-# CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 
+# CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
     courses_name = "New Lesson"
     lesson_amount = 1
@@ -90,9 +89,9 @@ def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuv
     lesson_frame.pack(pady=100)
     update_lesson_list(course_id)
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
-    btLA.place(anchor="n", relx =.9,rely=.02)
+    btLA.place(anchor="n", relx=.9, rely=.02)
     btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
-    btQA.place(anchor="n", relx =.8,rely=.02)
+    btQA.place(anchor="n", relx=.75, rely=.02)
     btB = Button(win, text="BACK", command=back, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5)
     btB.place(btN.place_info())
     btN.place_forget()
@@ -182,7 +181,7 @@ def open_lesson(lesson):
 
 # QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ
 def open_quiz(lesson):
-    global quizWindow, btSaveQuiz, btEditQuiz, quizLabel, current_question,btAddQuestion
+    global quizWindow, btSaveQuiz, btEditQuiz, quizLabel, current_question, btAddQuestion
     lesson_id, course_id, lesson_name, material, type = lesson
     current_question = 0
     cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
@@ -209,18 +208,17 @@ def open_quiz(lesson):
     correctlabel.pack(pady=5)
 
     def edit_quiz():
-        global entName, entQuestion, entAnswerList, dropper, btAddAns, btRemoveAns,btn_frame
+        global entQuizName, entQuestion, entAnswerList, dropper, btAddAns, btRemoveAns, btn_frame
         quiz = quizzes[current_question]
         quiz_id, _, question, answer, correct = quiz
 
-        entName = Entry(quizWindow, font=("impact", 25), justify=CENTER,relief=RIDGE, bd=5)
-        entName.insert(END, lesson_name)
-        entName.pack(quizLabel.pack_info(), pady=1)
+        entQuizName = Entry(quizWindow, font=("impact", 25), justify=CENTER, relief=RIDGE, bd=5)
+        entQuizName.insert(END, lesson_name)
+        entQuizName.pack(quizLabel.pack_info(), pady=1)
 
-        entQuestion = Entry(quizWindow, font=("Arial", 16),relief=RIDGE, bd=5)
+        entQuestion = Entry(quizWindow, font=("Arial", 16), relief=RIDGE, bd=5)
         entQuestion.insert(0, question.strip())
-        entQuestion.pack(pady=5)
-
+        entQuestion.pack()
 
         answers = answer.strip().split("|")
         entAnswerList = []
@@ -232,7 +230,7 @@ def open_quiz(lesson):
                 dropper_var.set("1")
 
         def add_answer():
-            new_ent = Entry(quizWindow, font=("Arial", 14),relief=RIDGE, bd=5)
+            new_ent = Entry(quizWindow, font=("Arial", 14), relief=RIDGE, bd=5)
             new_ent.insert(END, f"Option {len(entAnswerList) + 1}")
             new_ent.pack(pady=2)
             entAnswerList.append(new_ent)
@@ -245,37 +243,38 @@ def open_quiz(lesson):
                 refresh_dropdown()
 
         for answer in answers:
-            ent = Entry(quizWindow, font=("Arial", 14),relief=RIDGE, bd=5)
+            ent = Entry(quizWindow, font=("Arial", 14), relief=RIDGE, bd=5)
             ent.insert(END, answer.strip())
-            ent.pack(pady=2)
+            ent.pack()
             entAnswerList.append(ent)
 
         dropper_var = StringVar(value=str(correct))
-        dropper = ttk.Combobox(quizWindow, textvariable=dropper_var,values=[str(i + 1) for i in range(len(entAnswerList))],state="readonly", width=5, font=("Arial", 14))
+        dropper = ttk.Combobox(quizWindow, textvariable=dropper_var,values=[str(i + 1) for i in range(len(entAnswerList))], state="readonly", width=5,font=("Arial", 14))
         dropper.pack(pady=5)
         btQuizPrev.configure(state=DISABLED)
         btQuizNext.configure(state=DISABLED)
         btAddQuestion.configure(state=DISABLED)
+        btRemoveQuestion.configure(state=DISABLED)
 
         quizLabel.pack_forget()
         questionlabel.pack_forget()
         answerslabel.pack_forget()
         correctlabel.pack_forget()
         btEditQuiz.pack_forget()
+        btDeleteQuiz.pack_forget()
 
-        btn_frame = Frame(quizWindow,background="black")
+        btn_frame = Frame(quizWindow, background="black")
         btn_frame.pack(pady=5)
-        btAddAns = Button(btn_frame, text="+ Answer",command=add_answer)
+        btAddAns = Button(btn_frame, text="+ Answer", command=add_answer)
         btAddAns.pack(side=LEFT, padx=10)
 
-        btRemoveAns = Button(btn_frame, text="- Answer",command=remove_answer)
+        btRemoveAns = Button(btn_frame, text="- Answer", command=remove_answer)
         btRemoveAns.pack(side=LEFT, padx=10)
 
         btSaveQuiz.pack(pady=10)
-        btDeleteQuiz.pack(btDeleteQuiz.pack_info())
 
     def save_quiz():
-        new_name = entName.get().strip()
+        new_name = entQuizName.get().strip()
         new_question = entQuestion.get().strip()
         new_correct = dropper.get().strip()
         new_answers_list = [entry.get().strip() for entry in entAnswerList]
@@ -293,7 +292,7 @@ def open_quiz(lesson):
         quizzes.extend(cursor.fetchall())
 
         btn_frame.pack_forget()
-        entName.pack_forget()
+        entQuizName.pack_forget()
         entQuestion.pack_forget()
         dropper.pack_forget()
         btAddAns.pack_forget()
@@ -304,6 +303,7 @@ def open_quiz(lesson):
         btQuizPrev.configure(state=NORMAL)
         btQuizNext.configure(state=NORMAL)
         btAddQuestion.configure(state=NORMAL)
+        btRemoveQuestion.configure(state=NORMAL)
 
         quizLabel.configure(text=new_name)
         quizLabel.pack()
@@ -311,12 +311,13 @@ def open_quiz(lesson):
         answerslabel.pack(pady=5)
         correctlabel.pack(pady=5)
         btEditQuiz.pack(pady=5)
-        btDeleteQuiz.pack(btDeleteQuiz.pack_info())
+        btDeleteQuiz.pack(pady=5)
         update_lesson_list(course_id)
         change_quiz_page(current_question)
 
     def delete_quiz():
-        cursor.execute("DELETE FROM Courses WHERE id=?", (lesson_id,))
+        cursor.execute("DELETE FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+        cursor.execute("DELETE FROM Courses WHERE id = ?", (lesson_id,))
         connection.commit()
         on_closing_quiz_window()
         update_lesson_list(course_id)
@@ -331,7 +332,8 @@ def open_quiz(lesson):
             answers_text = "\n".join([f"{i + 1}) {opt.strip()}" for i, opt in enumerate(options)])
             answerslabel.config(text=answers_text)
 
-            correctlabel.config(text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
+            correctlabel.config(
+                text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
 
     def previous_question():
         global current_question
@@ -346,14 +348,10 @@ def open_quiz(lesson):
             change_quiz_page(current_question)
 
     def add_question():
-        question=""
-        answer=""
-        correct=1
-        cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(lesson_id, "", "", 1)
-        )
+        global current_question
+        cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(lesson_id, "", "", 1))
         connection.commit()
 
-        # Reload quizzes from database
         cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
         quizzes.clear()
         quizzes.extend(cursor.fetchall())
@@ -361,10 +359,30 @@ def open_quiz(lesson):
         current_question = len(quizzes) - 1
         change_quiz_page(current_question)
 
+    def remove_question():
+        global current_question
+
+        cursor.execute("SELECT id FROM Quizes WHERE lesson_id = ? ORDER BY id DESC LIMIT 1", (lesson_id,))
+        last_quiz = cursor.fetchone()
+
+        if last_quiz:
+            last_id = last_quiz[0]
+            cursor.execute("DELETE FROM Quizes WHERE id = ?", (last_id,))
+            connection.commit()
+
+            cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+            quizzes.clear()
+            quizzes.extend(cursor.fetchall())
+
+            current_question = max(0, len(quizzes) - 1)
+            change_quiz_page(current_question)
+
     change_quiz_page(current_question)
-    
-    btAddQuestion = Button(quizWindow, text="Add", command=add_question, font="Impact", width=8, relief=RAISED, bd=5)
+
+    btAddQuestion = Button(quizWindow, text="Add Q", command=add_question, font="Impact", width=8, relief=RAISED, bd=5)
     btAddQuestion.place(anchor=N, relx=.08, rely=.01)
+    btRemoveQuestion = Button(quizWindow, text="- Last Q", command=remove_question, font="Impact", width=8, relief=RAISED, bd=5)
+    btRemoveQuestion.place(anchor=N, relx=.9, rely=.01)
 
     btEditQuiz = Button(quizWindow, text="Edit", command=edit_quiz, width=10, relief=RAISED, bd=5)
     btEditQuiz.pack(pady=5, side=TOP)
@@ -375,11 +393,13 @@ def open_quiz(lesson):
     btSaveQuiz = Button(quizWindow, text="Save", command=save_quiz, width=10, relief=RAISED, bd=5)
     btSaveQuiz.pack_forget()
 
-    btQuizPrev = Button(quizWindow, text="⮜--", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=previous_question)
-    btQuizPrev.place(anchor=S, relx =.1,rely=.9)
+    btQuizPrev = Button(quizWindow, text="⮜--", font=("Impact", 18), padx=20, relief=RAISED, bd=5,
+                        command=previous_question)
+    btQuizPrev.place(anchor=S, relx=.1, rely=.9)
 
-    btQuizNext = Button(quizWindow, text="--⮞", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=next_question)
-    btQuizNext.place(anchor=S, relx =.9,rely=.9)
+    btQuizNext = Button(quizWindow, text="--⮞", font=("Impact", 18), padx=20, relief=RAISED, bd=5,
+                        command=next_question)
+    btQuizNext.place(anchor=S, relx=.9, rely=.9)
 
     quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
     quizWindow.resizable(0, 0)
@@ -406,7 +426,8 @@ def update_lesson_list(course_id):
             button_color = "SystemButtonFace"
             button_command = lambda l=lesson: open_lesson(l)
 
-        lesson_button = Button(lesson_frame, text=button_text, command=button_command, width=30, padx=20, pady=20,font="Arial", relief=RAISED, bd=5, bg=button_color)
+        lesson_button = Button(lesson_frame, text=button_text, command=button_command, width=30, padx=20, pady=20,
+                               font="Arial", relief=RAISED, bd=5, bg=button_color)
         lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
 
         column_count += 1
@@ -416,7 +437,8 @@ def update_lesson_list(course_id):
 
 def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
-        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",(courses_per_page, current_page * courses_per_page))
+        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",
+                       (courses_per_page, current_page * courses_per_page))
         Lesson_plans = cursor.fetchall()
 
     for widget in frame.winfo_children():
@@ -427,7 +449,8 @@ def update_courses_list(Lesson_plans=None):
 
     for lessons in Lesson_plans:
         lessons_id, lessons_name, _ = lessons
-        course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,padx=20, pady=20, font=20, relief=RAISED, bd=5)
+        course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,
+                               padx=20, pady=20, font=20, relief=RAISED, bd=5)
         course_button.grid(row=row_count, column=column_count, padx=10, pady=10)
         column_count += 1
         if column_count == 3:
@@ -440,9 +463,9 @@ framePack = frame.pack_info()
 
 update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="black", font=("impact", 40))
-labelMain.place(anchor=N, relx =.5,rely=.01)
+labelMain.place(anchor=N, relx=.5, rely=.01)
 btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=add_courses, relief=RAISED, bd=5, font="impact")
-btN.place(anchor=N, relx =.05,rely=.02)
+btN.place(anchor=N, relx=.08, rely=.02)
 NPlacement = btN.place_info()
 
 win.mainloop()
