@@ -3,6 +3,7 @@ from tkinter import ttk
 import sqlite3
 
 current_page = 0
+current_lesson_page=0
 courses_per_page = 12
 lessons_per_page = 12
 displayWindow = None
@@ -56,53 +57,56 @@ def on_closing_quiz_window():
 
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
-    courses_name = "New Lesson"
-    lesson_amount = 1
-    cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", (courses_name, lesson_amount))
+    cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
     update_courses_list()
 
 def add_lesson(course_id):
     newLesson = "New"
-    material = ""
-    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",
-                   (course_id, newLesson, material, 'lesson'))
+    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, "", 'lesson'))
     connection.commit()
     update_lesson_list(course_id)
 
 def add_quiz(course_id):
     newLesson = "Quiz"
-    material = ""
-    question = ""
-    answer = ""
-    correct = True
-    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, material, 'quiz'))
+    cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, "", 'quiz'))
     last = cursor.lastrowid
-    cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(last, question, answer, correct))
+    cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(last, "", "", 1))
     connection.commit()
     update_lesson_list(course_id)
 
 def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_page, lesson_frame, btB, btLA, btQA
+    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA
     current_page = 0
+    current_lesson_page = 0
     frame.pack_forget()
     lesson_frame = Frame(win, background="black")
     lesson_frame.pack(pady=100)
+
+    next_button.configure(command=lambda: next_lesson_page(course_id))
+    prev_button.configure(command=lambda: previous_lesson_page(course_id))
+
     update_lesson_list(course_id)
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
-    btLA.place(anchor="n", relx=.9, rely=.02)
+    btLA.place(anchor=N, relx=.9, rely=.02)
     btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
-    btQA.place(anchor="n", relx=.75, rely=.02)
+    btQA.place(anchor=N, relx=.75, rely=.02)
     btB = Button(win, text="BACK", command=back, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5)
     btB.place(btN.place_info())
     btN.place_forget()
 
 def back():
+    global current_page,current_lesson_page
+    current_page=0
+    current_lesson_page=0
     lesson_frame.pack_forget()
     frame.pack(framePack)
     btB.place_forget()
     btLA.place_forget()
     btQA.place_forget()
     btN.place(NPlacement)
+    update_courses_list()
+    next_button.configure(command=next_page)
+    prev_button.configure(command=previous_page)
 
 # LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON
 def open_lesson(lesson):
@@ -332,8 +336,7 @@ def open_quiz(lesson):
             answers_text = "\n".join([f"{i + 1}) {opt.strip()}" for i, opt in enumerate(options)])
             answerslabel.config(text=answers_text)
 
-            correctlabel.config(
-                text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
+            correctlabel.config(text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
 
     def previous_question():
         global current_question
@@ -393,22 +396,19 @@ def open_quiz(lesson):
     btSaveQuiz = Button(quizWindow, text="Save", command=save_quiz, width=10, relief=RAISED, bd=5)
     btSaveQuiz.pack_forget()
 
-    btQuizPrev = Button(quizWindow, text="⮜--", font=("Impact", 18), padx=20, relief=RAISED, bd=5,
-                        command=previous_question)
+    btQuizPrev = Button(quizWindow, text="⮜—", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=previous_question)
     btQuizPrev.place(anchor=S, relx=.1, rely=.9)
 
-    btQuizNext = Button(quizWindow, text="--⮞", font=("Impact", 18), padx=20, relief=RAISED, bd=5,
-                        command=next_question)
+    btQuizNext = Button(quizWindow, text="—⮞", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=next_question)
     btQuizNext.place(anchor=S, relx=.9, rely=.9)
 
     quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
-    quizWindow.resizable(0, 0)
 
 def update_lesson_list(course_id):
     for widget in lesson_frame.winfo_children():
         widget.destroy()
 
-    cursor.execute("SELECT * FROM Courses WHERE course_id = ?", (course_id,))
+    cursor.execute("SELECT * FROM Courses WHERE course_id = ? LIMIT ? OFFSET ?",(course_id, lessons_per_page, current_lesson_page * lessons_per_page))
     lessons = cursor.fetchall()
     row_count = 0
     column_count = 0
@@ -426,8 +426,7 @@ def update_lesson_list(course_id):
             button_color = "SystemButtonFace"
             button_command = lambda l=lesson: open_lesson(l)
 
-        lesson_button = Button(lesson_frame, text=button_text, command=button_command, width=30, padx=20, pady=20,
-                               font="Arial", relief=RAISED, bd=5, bg=button_color)
+        lesson_button = Button(lesson_frame, text=button_text, command=button_command, width=30, padx=20, pady=20,font="Arial", relief=RAISED, bd=5, bg=button_color)
         lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
 
         column_count += 1
@@ -435,10 +434,22 @@ def update_lesson_list(course_id):
             column_count = 0
             row_count += 1
 
+        cursor.execute("SELECT COUNT(*) FROM Courses WHERE course_id = ?", (course_id,))
+        total_lessons = cursor.fetchone()[0]
+        total_lesson_pages = (total_lessons + lessons_per_page - 1) // lessons_per_page
+        if current_lesson_page < total_lesson_pages - 1:
+            next_button.configure(state=NORMAL)
+        else:
+            next_button.configure(state=DISABLED)
+
+        if current_lesson_page > 0:
+            prev_button.configure(state=NORMAL)
+        else:
+            prev_button.configure(state=DISABLED)
+
 def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
-        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",
-                       (courses_per_page, current_page * courses_per_page))
+        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",(courses_per_page, current_page * courses_per_page))
         Lesson_plans = cursor.fetchall()
 
     for widget in frame.winfo_children():
@@ -449,24 +460,63 @@ def update_courses_list(Lesson_plans=None):
 
     for lessons in Lesson_plans:
         lessons_id, lessons_name, _ = lessons
-        course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,
-                               padx=20, pady=20, font=20, relief=RAISED, bd=5)
+        course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,padx=20, pady=20, font=20, relief=RAISED, bd=5)
         course_button.grid(row=row_count, column=column_count, padx=10, pady=10)
         column_count += 1
         if column_count == 3:
             column_count = 0
             row_count += 1
 
+    cursor.execute("SELECT COUNT(*) FROM Lesson_plans")
+    total_courses = cursor.fetchone()[0]
+    total_pages = (total_courses + courses_per_page - 1) // courses_per_page
+    if current_page < total_pages - 1:
+        next_button.configure(state=NORMAL)
+    else:
+        next_button.configure(state=DISABLED)
+
+    if current_page > 0:
+        prev_button.configure(state=NORMAL)
+    else:
+        prev_button.configure(state=DISABLED)
+
+def previous_page(event=None):
+    global current_page
+    current_page -= 1
+    update_courses_list()
+
+def next_page(event=None):
+    global current_page
+    current_page += 1
+    update_courses_list()
+
+def previous_lesson_page(course_id):
+    global current_lesson_page
+    current_lesson_page -= 1
+    update_lesson_list(course_id)
+
+def next_lesson_page(course_id):
+    global current_lesson_page
+    current_lesson_page += 1
+    update_lesson_list(course_id)
+
 frame = Frame(win, background="black")
 frame.pack(pady=100)
 framePack = frame.pack_info()
 
-update_courses_list()
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="black", font=("impact", 40))
 labelMain.place(anchor=N, relx=.5, rely=.01)
-btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=add_courses, relief=RAISED, bd=5, font="impact")
+btN = Button(win, text="NEW", width=10, padx=20, pady=10,background="Light Grey", command=add_courses, relief=RAISED, bd=5, font="impact")
 btN.place(anchor=N, relx=.08, rely=.02)
 NPlacement = btN.place_info()
 
+
+prev_button = Button(win, text="⮜—",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5,command=previous_page)
+prev_button.place(relx=.1, rely=.8)
+next_button = Button(win, text="—⮞",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5, command=next_page)
+next_button.place(relx=.8, rely=.8)
+
+
+update_courses_list()
 win.mainloop()
 connection.close()
