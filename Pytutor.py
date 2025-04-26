@@ -23,7 +23,7 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
                     lesson_name TEXT NOT NULL,
                     material TEXT NOT NULL,
                     type TEXT DEFAULT 'lesson',
-                    FOREIGN KEY(course_id) REFERENCES Lesson_plans(id)
+                    FOREIGN KEY(course_id) REFERENCES Lesson_plans(id) ON DELETE CASCADE
                 )''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS Quizes (
                     id INTEGER PRIMARY KEY,
@@ -58,6 +58,7 @@ def on_closing_quiz_window():
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
     cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
+    connection.commit()
     update_courses_list()
 
 def add_lesson(course_id):
@@ -75,17 +76,65 @@ def add_quiz(course_id):
     update_lesson_list(course_id)
 
 def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA
+    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA,btDC,btEC
     current_page = 0
     current_lesson_page = 0
     frame.pack_forget()
     lesson_frame = Frame(win, background="black")
     lesson_frame.pack(pady=100)
 
+    labelMain.configure(text=course_name)
+
     next_button.configure(command=lambda: next_lesson_page(course_id))
     prev_button.configure(command=lambda: previous_lesson_page(course_id))
 
     update_lesson_list(course_id)
+
+    def edit_course():
+        global entMain,btSC
+        entMain = Entry(win, font=("impact", 40), justify=CENTER, relief=RIDGE, bd=5)
+        entMain.insert(END, course_name)
+        entMain.place(labelMain.place_info())
+        labelMain.place_forget()
+        btB.configure(state=DISABLED)
+        btDC.configure(state=DISABLED)
+        btSC = Button(win, text="SAVE COURSE", command=save_course, width=10, padx=20, pady=10, font="Impact",relief=RAISED, bd=5)
+        btSC.place(btEC.place_info())
+        btEC.place_forget()
+
+    def save_course():
+        new_name = entMain.get().strip()
+        labelMain.place(entMain.place_info())
+        labelMain.configure(text=new_name)
+        btB.configure(state=NORMAL)
+        btDC.configure(state=NORMAL)
+        btEC.place(btSC.place_info())
+        btSC.place_forget()
+        entMain.place_forget()
+        cursor.execute("UPDATE Lesson_plans SET name=? WHERE id=?", (new_name, course_id))
+        connection.commit()
+
+    def delete_course():
+        cursor.execute("DELETE FROM Lesson_plans WHERE id=?", (course_id,))
+        connection.commit()
+        cursor.execute("SELECT id FROM Courses")
+        all_lessons = cursor.fetchall()
+
+        for lesson in all_lessons:
+            lesson_id = lesson[0]
+            cursor.execute("DELETE FROM Courses WHERE id = ?", (lesson_id,))
+            cursor.execute("DELETE FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+
+        connection.commit()
+        on_closing_display_window()
+        back()
+        update_courses_list()
+
+    btDC = Button(win, text="DELETE COURSE",command=delete_course, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5)
+    btDC.place(anchor=N, relx=.2, rely=.02)
+    btEC = Button(win, text="EDIT COURSE", command=edit_course, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5)
+    btEC.place(anchor=N, relx=.3, rely=.02)
+
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
     btLA.place(anchor=N, relx=.9, rely=.02)
     btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5)
@@ -98,12 +147,15 @@ def back():
     global current_page,current_lesson_page
     current_page=0
     current_lesson_page=0
+    labelMain.configure(text="PYTUTOR")
     lesson_frame.pack_forget()
     frame.pack(framePack)
+    btN.place(btB.place_info())
     btB.place_forget()
     btLA.place_forget()
     btQA.place_forget()
-    btN.place(NPlacement)
+    btDC.place_forget()
+    btEC.place_forget()
     update_courses_list()
     next_button.configure(command=next_page)
     prev_button.configure(command=previous_page)
@@ -506,9 +558,8 @@ framePack = frame.pack_info()
 
 labelMain = Label(win, text="PYTUTOR", foreground="white", background="black", font=("impact", 40))
 labelMain.place(anchor=N, relx=.5, rely=.01)
-btN = Button(win, text="NEW", width=10, padx=20, pady=10,background="Light Grey", command=add_courses, relief=RAISED, bd=5, font="impact")
+btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=add_courses, relief=RAISED, bd=5, font="impact")
 btN.place(anchor=N, relx=.08, rely=.02)
-NPlacement = btN.place_info()
 
 
 prev_button = Button(win, text="⮜—",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5,command=previous_page)
