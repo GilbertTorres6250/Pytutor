@@ -9,7 +9,6 @@ lessons_per_page = 12
 displayWindow = None
 quizWindow = None
 menuWindow = None
-# WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE
 
 connection = sqlite3.connect('Lesson_plans.db')
 cursor = connection.cursor()
@@ -67,7 +66,6 @@ def on_closing_menu_window():
         menuWindow.destroy()
         menuWindow = None
 
-# CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
     cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
     connection.commit()
@@ -180,7 +178,6 @@ def back():
     next_button.configure(command=next_page)
     prev_button.configure(command=previous_page)
 
-# LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit, lessonLabel
     lesson_id, course_id, lesson_name, material, type = lesson
@@ -254,7 +251,6 @@ def open_lesson(lesson):
     displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
     displayWindow.minsize(width=400, height=400)
 
-# QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ
 def open_quiz(lesson):
     global quizWindow, btSaveQuiz, btEditQuiz, quizLabel, current_question, btAddQuestion
     lesson_id, course_id, lesson_name, material, type = lesson
@@ -349,7 +345,9 @@ def open_quiz(lesson):
         btSaveQuiz.pack(pady=10)
 
     def save_quiz():
+        nonlocal lesson_name
         new_name = entQuizName.get().strip()
+        lesson_name = new_name
         new_question = entQuestion.get().strip()
         new_correct = dropper.get().strip()
         new_answers_list = [entry.get().strip() for entry in entAnswerList]
