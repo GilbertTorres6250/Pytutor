@@ -1,0 +1,403 @@
+from tkinter import *
+from tkinter import ttk
+import sqlite3
+
+current_page = 0
+current_lesson_page=0
+courses_per_page = 12
+lessons_per_page = 12
+displayWindow = None
+quizWindow = None
+menuWindow = None
+
+connection = sqlite3.connect('Lesson_plans.db')
+cursor = connection.cursor()
+cursor.execute('''CREATE TABLE IF NOT EXISTS Lesson_plans (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    lessons INTEGER NOT NULL
+                )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
+                    id INTEGER PRIMARY KEY,
+                    course_id INTEGER,
+                    lesson_name TEXT NOT NULL,
+                    material TEXT NOT NULL,
+                    type TEXT DEFAULT 'lesson',
+                    FOREIGN KEY(course_id) REFERENCES Lesson_plans(id) ON DELETE CASCADE
+                )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS Quizes (
+                    id INTEGER PRIMARY KEY,
+                    lesson_id INTEGER,
+                    question TEXT NOT NULL,
+                    answer TEXT NOT NULL,
+                    correct INTEGER NOT NULL,
+                    FOREIGN KEY(lesson_id) REFERENCES Courses(id) ON DELETE CASCADE
+                )''')
+cursor.execute('''CREATE TABLE IF NOT EXISTS colors (
+                    id INTEGER PRIMARY KEY,
+                    background_color TEXT,
+                    foreground_color TEXT
+                )''')
+connection.commit()
+
+win = Tk()
+win.state("zoomed")
+win.geometry("900x600")
+win.title("PyTutor")
+win.configure(background="black")
+screen_wide = win.winfo_screenwidth()
+screen_tall = win.winfo_screenheight()
+
+def on_closing_display_window():
+    global displayWindow
+    if displayWindow is not None:
+        displayWindow.destroy()
+        displayWindow = None
+
+def on_closing_quiz_window():
+    global quizWindow
+    if quizWindow is not None:
+        quizWindow.destroy()
+        quizWindow = None
+
+def on_closing_menu_window():
+    global menuWindow
+    if menuWindow is not None:
+        menuWindow.destroy()
+        menuWindow = None
+
+def add_courses():
+    cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
+    connection.commit()
+    update_courses_list()
+
+def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
+    global current_lesson_page,current_page, lesson_frame, btB
+    current_lesson_page = 0
+    frame.pack_forget()
+    lesson_frame = Frame(win, background=b)
+    lesson_frame.pack(pady=100)
+
+    labelMain.configure(text=course_name)
+
+    next_button.configure(command=lambda: next_lesson_page(course_id))
+    prev_button.configure(command=lambda: previous_lesson_page(course_id))
+
+    update_lesson_list(course_id)
+
+    btB = Button(win, text="BACK", command=back, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
+    btB.place(btM.place_info())
+    btM.place_forget()
+
+def back():
+    global current_page,current_lesson_page
+    current_page=0
+    current_lesson_page=0
+    labelMain.configure(text="PYTUTOR")
+    lesson_frame.pack_forget()
+    frame.pack(framePack)
+    btM.place(btB.place_info())
+    btB.place_forget()
+    update_courses_list()
+    next_button.configure(command=next_page)
+    prev_button.configure(command=previous_page)
+
+def open_lesson(lesson):
+    global displayWindow
+    lesson_id, course_id, lesson_name, material, type = lesson
+    if displayWindow is not None:
+        displayWindow.focus()
+        return
+    displayWindow = Toplevel(win)
+    displayWindow.title(lesson_name)
+    displayWindow.geometry("600x600")
+    displayWindow.configure(background=b)
+    lessonLabel = Label(displayWindow, text=f"{lesson_name}", font="impact", background=b, foreground=f)
+    lessonLabel.pack(side=TOP)
+
+    ent_Material = Label(displayWindow, width=30, height=5, relief=RIDGE, bd=10, text=f"{material}")
+    ent_Material.pack(pady=5, padx=10, fill=BOTH, expand=True)
+
+    displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
+    displayWindow.minsize(width=400, height=400)
+
+def open_quiz(lesson):
+    global quizWindow, current_question
+    lesson_id, course_id, lesson_name, material, type = lesson
+    current_question = 0
+    cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+    quizzes = cursor.fetchall()
+    if quizWindow is not None:
+        quizWindow.focus()
+        return
+
+    quizWindow = Toplevel(win)
+    quizWindow.title("Quiz Maker")
+    quizWindow.geometry("600x600")
+    quizWindow.configure(background=b)
+
+    quizLabel = Label(quizWindow, text=f"{lesson_name}", font=("impact", 25), background=b, foreground=f)
+    quizLabel.pack(side=TOP)
+
+    questionlabel = Label(quizWindow, font=("Arial", 18), bg=b, fg=f, wraplength=600)
+    questionlabel.pack(pady=10)
+
+    answerslabel = Label(quizWindow, font=("Arial", 16), bg=b, fg=f, justify=LEFT)
+    answerslabel.pack(pady=5)
+
+
+    def change_quiz_page(index):
+        nonlocal btQuizNext
+        if 0 <= index < len(quizzes):
+            quiz_id, lesson_id_fk, question, answer, correct = quizzes[index]
+            questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
+
+            options = answer.strip().split("|")
+            answers_text = "\n".join([f"{i + 1}) {opt.strip()}" for i, opt in enumerate(options)])
+            answerslabel.config(text=answers_text)
+
+    def previous_question():
+        global current_question
+        if current_question > 0:
+            current_question -= 1
+            change_quiz_page(current_question)
+
+    def next_question():
+        global current_question
+        if current_question < len(quizzes) - 1:
+            current_question += 1
+            change_quiz_page(current_question)
+
+    change_quiz_page(current_question)
+
+    btQuizPrev = Button(quizWindow, text="⮜—", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=previous_question, bg=f, fg=b, activebackground=b,activeforeground=f)
+    btQuizPrev.place(anchor=S, relx=.1, rely=.9)
+
+    btQuizNext = Button(quizWindow, text="—⮞", font=("Impact", 18), padx=20, relief=RAISED, bd=5,command=next_question, bg=f, fg=b, activebackground=b,activeforeground=f)
+    btQuizNext.place(anchor=S, relx=.9, rely=.9)
+
+    quizWindow.protocol("WM_DELETE_WINDOW", on_closing_quiz_window)
+
+def update_lesson_list(course_id):
+    for widget in lesson_frame.winfo_children():
+        widget.destroy()
+
+    cursor.execute("SELECT * FROM Courses WHERE course_id = ? LIMIT ? OFFSET ?",(course_id, lessons_per_page, current_lesson_page * lessons_per_page))
+    lessons = cursor.fetchall()
+    row_count = 0
+    column_count = 0
+
+    for lesson in lessons:
+        global is_quiz
+        lesson_id, course_id, lesson_name, material, type = lesson
+        is_quiz = (type == 'quiz')
+
+        if is_quiz == True:
+            button_text = f"★{lesson_name}"
+            button_color = b
+            fore = f
+            button_command = lambda q=lesson: open_quiz(q)
+        else:
+            button_text = f"☆{lesson_name}"
+            button_color = f
+            fore = b
+            button_command = lambda l=lesson: open_lesson(l)
+
+        lesson_button = Button(lesson_frame, text=button_text, command=button_command, width=30, padx=20, pady=20,font="Arial", relief=RIDGE, bd=5, bg=button_color, fg=fore, activebackground=fore, activeforeground=button_color)
+        lesson_button.grid(row=row_count, column=column_count, padx=10, pady=10)
+
+        if is_quiz == True:
+            lesson_button.reverse = True
+
+        column_count += 1
+        if column_count == 3:
+            column_count = 0
+            row_count += 1
+
+    cursor.execute("SELECT COUNT(*) FROM Courses WHERE course_id = ?", (course_id,))
+    total_lessons = cursor.fetchone()[0]
+    total_lesson_pages = (total_lessons + lessons_per_page - 1) // lessons_per_page
+    if current_lesson_page < total_lesson_pages - 1:
+        next_button.configure(state=NORMAL)
+    else:
+        next_button.configure(state=DISABLED)
+
+    if current_lesson_page > 0:
+        prev_button.configure(state=NORMAL)
+    else:
+        prev_button.configure(state=DISABLED)
+
+def update_courses_list(Lesson_plans=None):
+    if Lesson_plans is None:
+        cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",(courses_per_page, current_page * courses_per_page))
+        Lesson_plans = cursor.fetchall()
+
+    for widget in frame.winfo_children():
+        widget.destroy()
+
+    row_count = 0
+    column_count = 0
+
+    for lessons in Lesson_plans:
+        lessons_id, lessons_name, _ = lessons
+        course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,padx=20, pady=20, font=20, relief=RIDGE, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
+        course_button.grid(row=row_count, column=column_count, padx=10, pady=10)
+        column_count += 1
+        if column_count == 3:
+            column_count = 0
+            row_count += 1
+
+    cursor.execute("SELECT COUNT(*) FROM Lesson_plans")
+    total_courses = cursor.fetchone()[0]
+    total_pages = (total_courses + courses_per_page - 1) // courses_per_page
+    if current_page < total_pages - 1:
+        next_button.configure(state=NORMAL)
+    else:
+        next_button.configure(state=DISABLED)
+
+    if current_page > 0:
+        prev_button.configure(state=NORMAL)
+    else:
+        prev_button.configure(state=DISABLED)
+
+def previous_page(event=None):
+    global current_page
+    current_page -= 1
+    update_courses_list()
+
+def next_page(event=None):
+    global current_page
+    current_page += 1
+    update_courses_list()
+
+def previous_lesson_page(course_id):
+    global current_lesson_page
+    current_lesson_page -= 1
+    update_lesson_list(course_id)
+
+def next_lesson_page(course_id):
+    global current_lesson_page
+    current_lesson_page += 1
+    update_lesson_list(course_id)
+
+def openMenuWindow():
+    global menuWindow
+    global labelColor
+
+    if menuWindow is not None:
+        menuWindow.focus()
+        return
+    menuWindow = Toplevel(win)
+    menuWindow.title("COLOR MENU")
+    menuWindow.geometry("400x450")
+    menuWindow.resizable(0, 0)
+    menuWindow.configure(background=b)
+    menuWindow.protocol("WM_DELETE_WINDOW", on_closing_menu_window)
+
+    labelColor = Label(menuWindow, text="COLORWAYS", foreground=f, background=b, font="impact")
+    labelColor.grid(row=0, column=1, padx=20, pady=5)
+
+    for i, (name, color_pair) in enumerate(color_map.items()):
+        row = 1 + (i // 3)
+        col = i % 3
+        button = create_button(name, color_pair)
+        button.exclude_change = True
+        button.grid(row=row, column=col, padx=6, pady=10)
+
+def create_button(name, color_pair):
+    background_color, text_color = color_pair
+    return Button(menuWindow,bg=background_color,fg=text_color, text=name, command=lambda: setColor(*color_pair),width=15,relief=RAISED,bd=5)
+
+def setColor(b_color, f_color):
+    global b, f
+    b = b_color
+    f = f_color
+    saveColor(b, f)
+    change()
+
+def update_widget_colors(widget):
+    if hasattr(widget, 'exclude_change') and widget.exclude_change:
+        return
+    if 'background' in widget.keys():
+        widget.configure(background=b)
+    if 'foreground' in widget.keys():
+        widget.configure(foreground=f)
+    if isinstance(widget, (Text, Entry)):
+        widget.configure(foreground="black", background="white")
+    if isinstance(widget, Button):
+        widget.configure(background=f, foreground=b, activebackground=b, activeforeground=f)
+    if hasattr(widget, 'reverse') and widget.reverse:
+        try:
+            widget.configure(activebackground=f, activeforeground=b)
+        finally:
+            widget.configure(background=b, foreground=f)
+
+    for child in widget.winfo_children():
+        update_widget_colors(child)
+
+def change():
+    for window in [win, quizWindow, displayWindow, menuWindow]:
+        if window:
+            update_widget_colors(window)
+
+def saveColor(background, foreground):
+    cursor.execute("INSERT INTO colors (background_color, foreground_color) VALUES (?, ?)",(background, foreground))
+    connection.commit()
+
+def loadColor():
+    cursor.execute("SELECT * FROM colors ORDER BY id DESC LIMIT 1")
+    result = cursor.fetchone()
+    if result:
+        return result[1], result[2]
+    else:
+        return "black", "white"
+
+color_map = {
+    "COFFEE": ("#4d3626", "#f3e9dc"),  # Dark brown
+    "HORCHATA": ("#f2e9d9", "#b8976a"),  # Tan
+    "DR PEPPER": ("#711f25", "white"),  # Red
+    "MATCHA": ("#8EB288", "#3a4a37"),  # Pastel green
+    "CREAMSICLE": ("#fbbd60", "#f7e0b6"),  # Orange
+    "TARO": ("#9C7F91", "#E3B8C3"),  # Pastel Purple
+    "BLUE CHEESE": ("#6a7f8c", "#d1d9e6"),  # Pastel Blue
+    "OREO": ("#4d4a4b", "#eceaea"),  # Grey
+    "WATERMELON": ("#1c5c0e", "#ff6666"),  # Dark green
+    "HONEYDEW": ("#E0E094", "#8AB532"),  # Tan green
+    "COTTON CANDY": ("#ffccdb", "#24b9bc"),  # Pink
+    "BANANA": ("#f2f1a9", "#bf8040"),  # Yellow
+    "BLUEBERRY": ("#003d99", "#995c00"),  # Blue
+    "PASSIONFRUIT": ("#7b1157", "#e2e046"),  # Purple
+    "COCONUT": ("#965a3e", "#fff2e6"),  # Brown
+    "MANGO": ("#f4bb44", "#f46344"),  # Orange
+    "LIME": ("#009900", "#ffff66"),  # Lime
+    "LEMON": ("#ffff66", "#009900"),  # Yellow
+    "PUMPKIN PIE": ("#D97A3B", "#F0A03A"),  # Orange
+    "GRAPE": ("#6f2da8", "#E3B8C3"),  # Purple
+    "GUAVA": ("#b6c360", "#ec6a4b"),  # Yucky Green
+    "TOMATO": ("#ff6347", "#6dc242"),  # Red
+    "HONEY": ("#f9c901", "#985b10"),  # Yellow
+    "STRAWBERRY MILK": ("#fc5c8c", "#fbd8d8"),  # Pink
+}
+
+b, f = loadColor()
+win.configure(background=b)
+change()
+
+frame = Frame(win, background=b)
+frame.pack(pady=100)
+framePack = frame.pack_info()
+
+labelMain = Label(win, text="PYTUTOR", foreground=f, background=b, font=("impact", 40))
+labelMain.place(anchor=N, relx=.5, rely=.01)
+
+btM = Button(win, text="MENU", width=10, padx=20, pady=10, bg=f, fg=b, activebackground=b,activeforeground=f, command=openMenuWindow,relief=RAISED, bd=5, font="impact")
+btM.place(anchor=N, relx=.08, rely=.02)
+
+prev_button = Button(win, text="⮜—",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5,command=previous_page, bg=f, fg=b, activebackground=b,activeforeground=f)
+prev_button.place(relx=.04, rely=.8)
+next_button = Button(win, text="—⮞",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5, command=next_page, bg=f, fg=b, activebackground=b,activeforeground=f)
+next_button.place(relx=.8, rely=.8)
+
+update_courses_list()
+win.mainloop()
+connection.close()
