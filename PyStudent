@@ -66,11 +66,6 @@ def on_closing_menu_window():
         menuWindow.destroy()
         menuWindow = None
 
-def add_courses():
-    cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
-    connection.commit()
-    update_courses_list()
-
 def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
     global current_lesson_page,current_page, lesson_frame, btB
     current_lesson_page = 0
@@ -115,8 +110,10 @@ def open_lesson(lesson):
     lessonLabel = Label(displayWindow, text=f"{lesson_name}", font="impact", background=b, foreground=f)
     lessonLabel.pack(side=TOP)
 
-    ent_Material = Label(displayWindow, width=30, height=5, relief=RIDGE, bd=10, text=f"{material}")
-    ent_Material.pack(pady=5, padx=10, fill=BOTH, expand=True)
+    MatLabel = Text(displayWindow,bg="white", fg="black", relief=RIDGE, bd=10)
+    MatLabel.insert(END, material)
+    MatLabel.config(state='disabled')
+    MatLabel.pack(pady=5, padx=10, fill=BOTH, expand=True)
 
     displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
     displayWindow.minsize(width=400, height=400)
@@ -130,6 +127,7 @@ def open_quiz(lesson):
     if quizWindow is not None:
         quizWindow.focus()
         return
+    selected_answers = [IntVar(value=0) for _ in quizzes]  # 0 means no selection
 
     quizWindow = Toplevel(win)
     quizWindow.title("Quiz Maker")
@@ -142,19 +140,26 @@ def open_quiz(lesson):
     questionlabel = Label(quizWindow, font=("Arial", 18), bg=b, fg=f, wraplength=600)
     questionlabel.pack(pady=10)
 
-    answerslabel = Label(quizWindow, font=("Arial", 16), bg=b, fg=f, justify=LEFT)
-    answerslabel.pack(pady=5)
+    question_frame = Frame(quizWindow, background=b, pady=10)
+    question_frame.pack()
 
 
     def change_quiz_page(index):
-        nonlocal btQuizNext
+        for widget in question_frame.winfo_children():
+            widget.destroy()
         if 0 <= index < len(quizzes):
             quiz_id, lesson_id_fk, question, answer, correct = quizzes[index]
             questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
-
             options = answer.strip().split("|")
+            radio_buttons = []
+            var = selected_answers[index]  # Get the IntVar for this question
+
+            for i, opt in enumerate(options, 1):
+                rb = Radiobutton(question_frame, text=opt.strip(), variable=var, value=i,
+                                 font=("Arial", 12), background="black", foreground="white", selectcolor="black")
+                rb.pack(anchor="w", padx=20)
+
             answers_text = "\n".join([f"{i + 1}) {opt.strip()}" for i, opt in enumerate(options)])
-            answerslabel.config(text=answers_text)
 
     def previous_question():
         global current_question
@@ -360,7 +365,7 @@ color_map = {
     "CREAMSICLE": ("#fbbd60", "#f7e0b6"),  # Orange
     "TARO": ("#9C7F91", "#E3B8C3"),  # Pastel Purple
     "BLUE CHEESE": ("#6a7f8c", "#d1d9e6"),  # Pastel Blue
-    "OREO": ("#4d4a4b", "#eceaea"),  # Grey
+    "OREO": ("#262525", "#eceaea"),  # Grey
     "WATERMELON": ("#1c5c0e", "#ff6666"),  # Dark green
     "HONEYDEW": ("#E0E094", "#8AB532"),  # Tan green
     "COTTON CANDY": ("#ffccdb", "#24b9bc"),  # Pink
