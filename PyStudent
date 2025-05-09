@@ -69,9 +69,11 @@ def on_closing_menu_window():
 def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
     global current_lesson_page,current_page, lesson_frame, btB
     current_lesson_page = 0
-    frame.pack_forget()
     lesson_frame = Frame(win, background=b)
-    lesson_frame.pack(pady=100)
+    lesson_frame.pack(frame.pack_info())
+    frame.pack_forget()
+
+    frame_navigation.pack(frame_navigation.pack_info())
 
     labelMain.configure(text=course_name)
 
@@ -89,8 +91,9 @@ def back():
     current_page=0
     current_lesson_page=0
     labelMain.configure(text="PYTUTOR")
+    frame.pack(lesson_frame.pack_info())
     lesson_frame.pack_forget()
-    frame.pack(framePack)
+    frame_navigation.pack(frame_navigation.pack_info())
     btM.place(btB.place_info())
     btB.place_forget()
     update_courses_list()
@@ -119,7 +122,7 @@ def open_lesson(lesson):
     displayWindow.minsize(width=400, height=400)
 
 def open_quiz(lesson):
-    global quizWindow, current_question
+    global quizWindow, current_question, quiz_navigation
     lesson_id, course_id, lesson_name, material, type = lesson
     current_question = 0
     cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
@@ -127,12 +130,15 @@ def open_quiz(lesson):
     if quizWindow is not None:
         quizWindow.focus()
         return
-    selected_answers = [IntVar(value=0) for _ in quizzes]  # 0 means no selection
+    selected_answers = [IntVar(value=0) for _ in quizzes]
 
     quizWindow = Toplevel(win)
     quizWindow.title("Quiz Maker")
     quizWindow.geometry("600x600")
     quizWindow.configure(background=b)
+
+    quiz_navigation = Frame(quizWindow, bg=b)
+    quiz_navigation.pack(pady=(0, 55), side=BOTTOM)
 
     quizLabel = Label(quizWindow, text=f"{lesson_name}", font=("impact", 25), background=b, foreground=f)
     quizLabel.pack(side=TOP)
@@ -140,26 +146,36 @@ def open_quiz(lesson):
     questionlabel = Label(quizWindow, font=("Arial", 18), bg=b, fg=f, wraplength=600)
     questionlabel.pack(pady=10)
 
+    correctlabel = Label(quizWindow, font=("Arial", 16), bg=b, fg=f)
+    correctlabel.pack_forget()
+
     question_frame = Frame(quizWindow, background=b, pady=10)
     question_frame.pack()
 
-
     def change_quiz_page(index):
+        global current_question
+        current_question = index
+
         for widget in question_frame.winfo_children():
             widget.destroy()
         if 0 <= index < len(quizzes):
             quiz_id, lesson_id_fk, question, answer, correct = quizzes[index]
             questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
             options = answer.strip().split("|")
-            radio_buttons = []
-            var = selected_answers[index]  # Get the IntVar for this question
+            var = selected_answers[index]
 
-            for i, opt in enumerate(options, 1):
-                rb = Radiobutton(question_frame, text=opt.strip(), variable=var, value=i,
-                                 font=("Arial", 12), background="black", foreground="white", selectcolor="black")
-                rb.pack(anchor="w", padx=20)
+            for chosen, opt in enumerate(options, 1):
+                btAnswer = Radiobutton(question_frame, text=opt.strip(), variable=var, value=chosen,font=("Arial", 15), background=b, foreground=f, selectcolor=b, activebackground=b, activeforeground=f)
+                btAnswer.pack(anchor="w", padx=20)
 
-            answers_text = "\n".join([f"{i + 1}) {opt.strip()}" for i, opt in enumerate(options)])
+        for page in range(len(quizzes)):
+            bubble = Button(quiz_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact",command=lambda i=page: change_quiz_page(i))
+            if page == index:
+                bubble.reverse = True
+                bubble.config(bg=b, fg=f)
+            else:
+                pass
+            bubble.grid(row=0, column=page, padx=5, pady=5)
 
     def previous_question():
         global current_question
@@ -172,6 +188,19 @@ def open_quiz(lesson):
         if current_question < len(quizzes) - 1:
             current_question += 1
             change_quiz_page(current_question)
+
+    def submit_quiz():
+        score = 0
+        total = len(quizzes)
+        for i, (quiz_id, _, _, answer, correct) in enumerate(quizzes):
+            selected = selected_answers[i].get()
+            if selected == int(correct):
+                score += 1
+        correctlabel.pack()
+        correctlabel.configure(text=f"SCORE:{score}/{total}!")
+
+    btSubmit = Button(quizWindow, text="Submit Quiz", font=("Impact", 18), padx=2, relief=RAISED, bd=5,command=submit_quiz, bg=f, fg=b, activebackground=b,activeforeground=f)
+    btSubmit.place(anchor=N, relx=0.8, rely=0.02)
 
     change_quiz_page(current_question)
 
@@ -222,6 +251,16 @@ def update_lesson_list(course_id):
     cursor.execute("SELECT COUNT(*) FROM Courses WHERE course_id = ?", (course_id,))
     total_lessons = cursor.fetchone()[0]
     total_lesson_pages = (total_lessons + lessons_per_page - 1) // lessons_per_page
+
+    for page in range(total_lesson_pages):
+        bubble = Button(frame_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact", command= lambda p=page, c=course_id: go_to_lesson_page(p, c))
+        if page == current_page:
+            bubble.reverse = True
+            bubble.config(bg=b, fg=f)
+        else:
+            pass
+        bubble.grid(row=0, column=page, padx=5, pady=5)
+
     if current_lesson_page < total_lesson_pages - 1:
         next_button.configure(state=NORMAL)
     else:
@@ -240,6 +279,9 @@ def update_courses_list(Lesson_plans=None):
     for widget in frame.winfo_children():
         widget.destroy()
 
+    for widget in frame_navigation.winfo_children():
+        widget.destroy()
+
     row_count = 0
     column_count = 0
 
@@ -255,6 +297,16 @@ def update_courses_list(Lesson_plans=None):
     cursor.execute("SELECT COUNT(*) FROM Lesson_plans")
     total_courses = cursor.fetchone()[0]
     total_pages = (total_courses + courses_per_page - 1) // courses_per_page
+
+    for page in range(total_pages):
+        bubble = Button(frame_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact", command=lambda p=page: go_to_page(p))
+        if page == current_page:
+            bubble.reverse = True
+            bubble.config(bg=b, fg=f)
+        else:
+            pass
+        bubble.grid(row=0, column=page, padx=5, pady=5)
+
     if current_page < total_pages - 1:
         next_button.configure(state=NORMAL)
     else:
@@ -283,6 +335,16 @@ def previous_lesson_page(course_id):
 def next_lesson_page(course_id):
     global current_lesson_page
     current_lesson_page += 1
+    update_lesson_list(course_id)
+
+def go_to_page(page):
+    global current_page
+    current_page = page
+    update_courses_list()
+
+def go_to_lesson_page(page, course_id):
+    global current_lesson_page
+    current_lesson_page = page
     update_lesson_list(course_id)
 
 def openMenuWindow():
@@ -323,20 +385,21 @@ def setColor(b_color, f_color):
 def update_widget_colors(widget):
     if hasattr(widget, 'exclude_change') and widget.exclude_change:
         return
-    if 'background' in widget.keys():
+    if "background" in widget.keys():
         widget.configure(background=b)
-    if 'foreground' in widget.keys():
+    if "foreground" in widget.keys():
         widget.configure(foreground=f)
     if isinstance(widget, (Text, Entry)):
         widget.configure(foreground="black", background="white")
     if isinstance(widget, Button):
         widget.configure(background=f, foreground=b, activebackground=b, activeforeground=f)
+    if isinstance(widget, Radiobutton):
+        widget.configure(background=b, foreground=f, activebackground=b, activeforeground=f, selectcolor=b)
     if hasattr(widget, 'reverse') and widget.reverse:
         try:
             widget.configure(activebackground=f, activeforeground=b)
         finally:
             widget.configure(background=b, foreground=f)
-
     for child in widget.winfo_children():
         update_widget_colors(child)
 
@@ -389,8 +452,10 @@ win.configure(background=b)
 change()
 
 frame = Frame(win, background=b)
-frame.pack(pady=100)
-framePack = frame.pack_info()
+frame.pack(pady=(100,40))
+
+frame_navigation = Frame(win, bg=b)
+frame_navigation.pack(pady=10)
 
 labelMain = Label(win, text="PYTUTOR", foreground=f, background=b, font=("impact", 40))
 labelMain.place(anchor=N, relx=.5, rely=.01)
