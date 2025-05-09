@@ -1,3 +1,4 @@
+from operator import index
 from tkinter import *
 from tkinter import ttk
 import sqlite3
@@ -9,6 +10,7 @@ lessons_per_page = 12
 displayWindow = None
 quizWindow = None
 menuWindow = None
+# WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE WINDOW NONE
 
 connection = sqlite3.connect('Lesson_plans.db')
 cursor = connection.cursor()
@@ -66,6 +68,7 @@ def on_closing_menu_window():
         menuWindow.destroy()
         menuWindow = None
 
+# CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
     cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
     connection.commit()
@@ -86,11 +89,13 @@ def add_quiz(course_id):
     update_lesson_list(course_id)
 
 def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA,btDC,btEC,btSC
+    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA,btDC,btEC,btSC, lesson_frame
     current_lesson_page = 0
-    frame.pack_forget()
     lesson_frame = Frame(win, background=b)
-    lesson_frame.pack(pady=100)
+    lesson_frame.pack(frame.pack_info())
+    frame.pack_forget()
+
+    frame_navigation.pack(frame_navigation.pack_info())
 
     labelMain.configure(text=course_name)
 
@@ -149,26 +154,29 @@ def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuv
     btDC = Button(win, text="DELETE COURSE",command=delete_course, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btDC.place_forget()
     btEC = Button(win, text="EDIT COURSE", command=edit_course, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
-    btEC.place(anchor=N, relx=.2, rely=.02)
+    btEC.place(btM.place_info())
     btSC = Button(win, text="SAVE COURSE", command=save_course, width=10, padx=20, pady=10, font="Impact",relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btSC.place_forget()
-
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
-    btLA.place(anchor=N, relx=.92, rely=.02)
+    btLA.place(anchor=N, relx=.93, rely=.02)
     btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btQA.place(anchor=N, relx=.8, rely=.02)
     btB = Button(win, text="BACK", command=back, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btB.place(btN.place_info())
+    btM.place_forget()
     btN.place_forget()
+    update_lesson_list(course_id)
 
 def back():
     global current_page,current_lesson_page
     current_page=0
     current_lesson_page=0
     labelMain.configure(text="PYTUTOR")
+    frame.pack(lesson_frame.pack_info())
     lesson_frame.pack_forget()
-    frame.pack(framePack)
+    frame_navigation.pack(frame_navigation.pack_info())
     btN.place(btB.place_info())
+    btM.place(btEC.place_info())
     btB.place_forget()
     btLA.place_forget()
     btQA.place_forget()
@@ -178,6 +186,7 @@ def back():
     next_button.configure(command=next_page)
     prev_button.configure(command=previous_page)
 
+# LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON LESSON
 def open_lesson(lesson):
     global displayWindow, btSave, btEdit, lessonLabel
     lesson_id, course_id, lesson_name, material, type = lesson
@@ -251,8 +260,9 @@ def open_lesson(lesson):
     displayWindow.protocol("WM_DELETE_WINDOW", on_closing_display_window)
     displayWindow.minsize(width=400, height=400)
 
+# QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ QUIZ
 def open_quiz(lesson):
-    global quizWindow, btSaveQuiz, btEditQuiz, quizLabel, current_question, btAddQuestion
+    global quizWindow, btSaveQuiz, btEditQuiz, quizLabel, current_question, btAddQuestion, quiz_navigation
     lesson_id, course_id, lesson_name, material, type = lesson
     current_question = 0
     cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
@@ -260,11 +270,13 @@ def open_quiz(lesson):
     if quizWindow is not None:
         quizWindow.focus()
         return
-
     quizWindow = Toplevel(win)
     quizWindow.title("Quiz Maker")
     quizWindow.geometry("600x600")
     quizWindow.configure(background=b)
+
+    quiz_navigation = Frame(quizWindow, bg=b)
+    quiz_navigation.pack(pady=(0,55), side= BOTTOM)
 
     quizLabel = Label(quizWindow, text=f"{lesson_name}", font=("impact", 25), background=b, foreground=f)
     quizLabel.pack(side=TOP)
@@ -277,7 +289,6 @@ def open_quiz(lesson):
 
     correctlabel = Label(quizWindow, font=("Arial", 16), bg=b, fg=f)
     correctlabel.pack(pady=5)
-
     def edit_quiz():
         global entQuizName, entQuestion, entAnswerList, dropper, btAddAns, btRemoveAns, btn_frame
         quiz = quizzes[current_question]
@@ -345,9 +356,7 @@ def open_quiz(lesson):
         btSaveQuiz.pack(pady=10)
 
     def save_quiz():
-        nonlocal lesson_name
         new_name = entQuizName.get().strip()
-        lesson_name = new_name
         new_question = entQuestion.get().strip()
         new_correct = dropper.get().strip()
         new_answers_list = [entry.get().strip() for entry in entAnswerList]
@@ -396,9 +405,9 @@ def open_quiz(lesson):
         update_lesson_list(course_id)
 
     def change_quiz_page(index):
-        nonlocal btQuizNext
+        global quiz_navigation
         if 0 <= index < len(quizzes):
-            quiz_id, lesson_id_fk, question, answer, correct = quizzes[index]
+            quiz_id, lesson_id, question, answer, correct = quizzes[index]
             questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
 
             options = answer.strip().split("|")
@@ -406,6 +415,15 @@ def open_quiz(lesson):
             answerslabel.config(text=answers_text)
 
             correctlabel.config(text=f"Correct Answer: {correct}) {options[int(correct) - 1].strip() if correct <= len(options) else 'N/A'}")
+
+        for page in range(len(quizzes)):
+            bubble = Button(quiz_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact",command=lambda i=page: change_quiz_page(i))
+            if page == index:
+                bubble.reverse = True
+                bubble.config(bg=b, fg=f)
+            else:
+                pass
+            bubble.grid(row=0, column=page, padx=5, pady=5)
 
     def previous_question():
         global current_question
@@ -421,7 +439,7 @@ def open_quiz(lesson):
 
     def add_question():
         global current_question
-        cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(lesson_id, "", "", 1))
+        cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(lesson_id, "Question", "Option 1", 1))
         connection.commit()
 
         cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
@@ -476,6 +494,8 @@ def open_quiz(lesson):
 def update_lesson_list(course_id):
     for widget in lesson_frame.winfo_children():
         widget.destroy()
+    for widget in frame_navigation.winfo_children():
+        widget.destroy()
 
     cursor.execute("SELECT * FROM Courses WHERE course_id = ? LIMIT ? OFFSET ?",(course_id, lessons_per_page, current_lesson_page * lessons_per_page))
     lessons = cursor.fetchall()
@@ -512,6 +532,16 @@ def update_lesson_list(course_id):
     cursor.execute("SELECT COUNT(*) FROM Courses WHERE course_id = ?", (course_id,))
     total_lessons = cursor.fetchone()[0]
     total_lesson_pages = (total_lessons + lessons_per_page - 1) // lessons_per_page
+
+    for page in range(total_lesson_pages):
+        bubble = Button(frame_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact", command= lambda p=page, c=course_id: go_to_lesson_page(p, c))
+        if page == current_page:
+            bubble.reverse = True
+            bubble.config(bg=b, fg=f)
+        else:
+            pass
+        bubble.grid(row=0, column=page, padx=5, pady=5)
+
     if current_lesson_page < total_lesson_pages - 1:
         next_button.configure(state=NORMAL)
     else:
@@ -526,8 +556,9 @@ def update_courses_list(Lesson_plans=None):
     if Lesson_plans is None:
         cursor.execute("SELECT * FROM Lesson_plans LIMIT ? OFFSET ?",(courses_per_page, current_page * courses_per_page))
         Lesson_plans = cursor.fetchall()
-
     for widget in frame.winfo_children():
+        widget.destroy()
+    for widget in frame_navigation.winfo_children():
         widget.destroy()
 
     row_count = 0
@@ -545,6 +576,16 @@ def update_courses_list(Lesson_plans=None):
     cursor.execute("SELECT COUNT(*) FROM Lesson_plans")
     total_courses = cursor.fetchone()[0]
     total_pages = (total_courses + courses_per_page - 1) // courses_per_page
+
+    for page in range(total_pages):
+        bubble = Button(frame_navigation, text=str(page + 1), width=2, height=1, bg=f, fg=b, activebackground=b,activeforeground=f, relief=RIDGE, bd=5, font="impact", command=lambda p=page: go_to_page(p))
+        if page == current_page:
+            bubble.reverse = True
+            bubble.config(bg=b, fg=f)
+        else:
+            pass
+        bubble.grid(row=0, column=page, padx=5, pady=5)
+
     if current_page < total_pages - 1:
         next_button.configure(state=NORMAL)
     else:
@@ -575,6 +616,16 @@ def next_lesson_page(course_id):
     current_lesson_page += 1
     update_lesson_list(course_id)
 
+def go_to_page(page):
+    global current_page
+    current_page = page
+    update_courses_list()
+
+def go_to_lesson_page(page, course_id):
+    global current_lesson_page
+    current_lesson_page = page
+    update_lesson_list(course_id)
+
 def openMenuWindow():
     global menuWindow
     global labelColor
@@ -597,7 +648,7 @@ def openMenuWindow():
         col = i % 3
         button = create_button(name, color_pair)
         button.exclude_change = True
-        button.grid(row=row, column=col, padx=6, pady=10)
+        button.grid(row=row, column=col, padx=4, pady=10)
 
 def create_button(name, color_pair):
     background_color, text_color = color_pair
@@ -655,7 +706,7 @@ color_map = {
     "CREAMSICLE": ("#fbbd60", "#f7e0b6"),  # Orange
     "TARO": ("#9C7F91", "#E3B8C3"),  # Pastel Purple
     "BLUE CHEESE": ("#6a7f8c", "#d1d9e6"),  # Pastel Blue
-    "OREO": ("#4d4a4b", "#eceaea"),  # Grey
+    "OREO": ("#262525", "#eceaea"),  # Grey
     "WATERMELON": ("#1c5c0e", "#ff6666"),  # Dark green
     "HONEYDEW": ("#E0E094", "#8AB532"),  # Tan green
     "COTTON CANDY": ("#ffccdb", "#24b9bc"),  # Pink
@@ -673,14 +724,15 @@ color_map = {
     "HONEY": ("#f9c901", "#985b10"),  # Yellow
     "STRAWBERRY MILK": ("#fc5c8c", "#fbd8d8"),  # Pink
 }
-
 b, f = loadColor()
 win.configure(background=b)
 change()
 
 frame = Frame(win, background=b)
-frame.pack(pady=100)
-framePack = frame.pack_info()
+frame.pack(pady=(100,40))
+
+frame_navigation = Frame(win, bg=b)
+frame_navigation.pack(pady=10)
 
 labelMain = Label(win, text="PYTUTOR", foreground=f, background=b, font=("impact", 40))
 labelMain.place(anchor=N, relx=.5, rely=.01)
@@ -688,7 +740,7 @@ labelMain.place(anchor=N, relx=.5, rely=.01)
 btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=add_courses, relief=RAISED, bd=5, font="impact", bg=f, fg=b, activebackground=b,activeforeground=f)
 btN.place(anchor=N, relx=.08, rely=.02)
 btM = Button(win, text="MENU", width=10, padx=20, pady=10, bg=f, fg=b, activebackground=b,activeforeground=f, command=openMenuWindow,relief=RAISED, bd=5, font="impact")
-btM.place(anchor=N, relx=.2, rely=.02)
+btM.place(anchor=N, relx=.21, rely=.02)
 
 prev_button = Button(win, text="⮜—",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5,command=previous_page, bg=f, fg=b, activebackground=b,activeforeground=f)
 prev_button.place(relx=.04, rely=.8)
