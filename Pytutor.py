@@ -1,7 +1,9 @@
-from operator import index
+from tkinter import filedialog
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
 import sqlite3
+import os
 
 current_page = 0
 current_lesson_page=0
@@ -16,8 +18,7 @@ connection = sqlite3.connect('Lesson_plans.db')
 cursor = connection.cursor()
 cursor.execute('''CREATE TABLE IF NOT EXISTS Lesson_plans (
                     id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    lessons INTEGER NOT NULL
+                    name TEXT NOT NULL
                 )''')
 cursor.execute('''CREATE TABLE IF NOT EXISTS Courses (
                     id INTEGER PRIMARY KEY,
@@ -70,7 +71,7 @@ def on_closing_menu_window():
 
 # CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF CLOSING WINDOW STUFF
 def add_courses():
-    cursor.execute("INSERT INTO Lesson_plans (name, lessons) VALUES (?, ?)", ("New Lesson", 1))
+    cursor.execute("INSERT INTO Lesson_plans (name) VALUES (?)", ("New Lesson",))
     connection.commit()
     update_courses_list()
 
@@ -84,12 +85,12 @@ def add_quiz(course_id):
     newLesson = "Quiz"
     cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, newLesson, "", 'quiz'))
     last = cursor.lastrowid
-    cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(last, "", "", 1))
+    cursor.execute("INSERT INTO Quizes(lesson_id,question, answer, correct) VALUES (?,?,?,?)",(last, "Question", "Option 1", 1))
     connection.commit()
     update_lesson_list(course_id)
 
-def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
-    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA,btDC,btEC,btSC, lesson_frame
+def display_lessons(course_id, course_name):  # xfcgvcftgvhvugytcryvbhuvgycftfvbuyvtcrvybunbvytcrvybbuytcrvybyuvtcr
+    global current_lesson_page,current_page, lesson_frame, btB, btLA, btQA,btDC,btEC,btSC, lesson_frame, btEx, btIm
     current_lesson_page = 0
     lesson_frame = Frame(win, background=b)
     lesson_frame.pack(frame.pack_info())
@@ -109,6 +110,10 @@ def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuv
         entMain = Entry(win, font=("impact", 40), justify=CENTER, relief=RIDGE, bd=5)
         entMain.insert(END, course_name)
         entMain.place(labelMain.place_info())
+        btLA.place(btEx.place_info())
+        btQA.place(anchor=N, relx=.8, rely=.02)
+        btEx.place_forget()
+        btIm.place_forget()
         labelMain.place_forget()
         btDC.place(btB.place_info())
         btSC.place(btEC.place_info())
@@ -119,6 +124,9 @@ def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuv
         new_name = entMain.get().strip()
         labelMain.place(entMain.place_info())
         labelMain.configure(text=new_name)
+        btEx.place(btLA.place_info())
+        btLA.place_forget()
+        btQA.place_forget()
         btB.place(btDC.place_info())
         btEC.place(btSC.place_info())
         btSC.place_forget()
@@ -157,15 +165,142 @@ def display_lessons(course_id, course_name,courses):  # xfcgvcftgvhvugytcryvbhuv
     btEC.place(btM.place_info())
     btSC = Button(win, text="SAVE COURSE", command=save_course, width=10, padx=20, pady=10, font="Impact",relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btSC.place_forget()
+    btEx = Button(win, text="EXPORT",command=lambda: makeExport(course_id, labelMain.cget("text")), width=10, padx=20, pady=10,font="Impact", relief=RAISED,bd=5, bg=f, fg=b)
+    btEx.place(btIm.place_info())
     btLA = Button(win, text="ADD LESSON", command=lambda c=course_id: add_lesson(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
-    btLA.place(anchor=N, relx=.93, rely=.02)
+    btLA.place_forget()
     btQA = Button(win, text="ADD QUIZ", command=lambda c=course_id: add_quiz(c), width=10, padx=20, pady=10,font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
-    btQA.place(anchor=N, relx=.8, rely=.02)
+    btQA.place_forget()
     btB = Button(win, text="BACK", command=back, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
     btB.place(btN.place_info())
+    btIm.place_forget()
     btM.place_forget()
     btN.place_forget()
     update_lesson_list(course_id)
+
+def makeExport(course_id, course_name):
+    filename = f"{course_name.replace(' ', '_')}.txt"
+    try:
+        cursor.execute("SELECT * FROM Courses WHERE course_id = ?", (course_id,))
+        lessons = cursor.fetchall()
+
+        if not lessons:
+            messagebox.showinfo("Export Failed", "No lessons found for this course.")
+            return
+
+        with open(filename, "w") as file:
+            file.write(f"Course: {course_name}\n")
+            file.write("=" * 50 + "\n")
+
+            for lesson in lessons:
+                lesson_id, course_id, lesson_name, material, type = lesson
+                file.write(f"Lesson ID: {lesson_id}\n")
+                file.write(f"Lesson Name: {lesson_name}\n")
+                file.write(f"Type: {type}\n")
+                if type == "quiz":
+                    cursor.execute("SELECT * FROM Quizes WHERE lesson_id = ?", (lesson_id,))
+                    quizzes = cursor.fetchall()
+                    for quiz in quizzes:
+                        quiz_id, lesson_id_fk, question, answer, correct = quiz
+                        file.write(f"Quiz ID: {quiz_id}\n")
+                        file.write(f"  Questions: {question}\n")
+                        file.write(f"  Answers: {answer}\n")
+                        file.write(f"  Correct: {correct}\n")
+                else:
+                    file.write(f"Material:\n{material}\n")
+                file.write("-" * 50 + "\n")
+
+        messagebox.showinfo("Export Successful", f"Course: '{course_name}' has been exported to {filename}.")
+
+    except Exception as e:
+        messagebox.showinfo("Export Failed", f"Unable to export because {e}")
+
+def openImport():
+    filename = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+
+    if filename:
+        if os.path.exists(filename):
+            with open(filename, 'r') as file:
+                content = file.read()
+
+            lines = content.split("\n")
+
+            if not lines or not lines[0].startswith("Course:"):
+                messagebox.showerror("Error", "Invalid file format. Missing course title.")
+                return
+
+            course_name = lines[0].replace("Course:", "").strip()
+
+            cursor.execute("INSERT INTO Lesson_plans (name) VALUES (?)", (course_name,))
+            connection.commit()
+            course_id = cursor.lastrowid
+
+            current_lesson = {}
+            quizzes = []
+            in_quiz_section = False
+
+            for line in lines:
+                line = line.strip()
+
+                if line.startswith("Lesson ID:"):
+                    if current_lesson:
+                        cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, current_lesson['name'], current_lesson.get('material', '').strip(), current_lesson['type']))
+                        connection.commit()
+                        lesson_id = cursor.lastrowid
+
+                        for q in quizzes:
+                            cursor.execute("INSERT INTO Quizes (lesson_id, question, answer, correct) VALUES (?, ?, ?, ?)",(lesson_id, q['question'], q['answer'], q['correct']))
+                        connection.commit()
+
+                        current_lesson = {}
+                        quizzes = []
+                        in_quiz_section = False
+
+                elif line.startswith("Lesson Name:"):
+                    current_lesson['name'] = line.replace("Lesson Name:", "").strip()
+
+                elif line.startswith("Type:"):
+                    current_lesson['type'] = line.replace("Type:", "").strip()
+                    if current_lesson['type'] == 'quiz':
+                        in_quiz_section = True
+
+                elif line.startswith("Material:"):
+                    current_lesson['material'] = ""
+
+                elif line.startswith("Quiz ID:"):
+                    quizzes.append({'question': '', 'answer': '', 'correct': 0})
+
+                elif line.startswith("Questions:") or line.startswith("Question:"):
+                    quizzes[-1]['question'] = line.split(":", 1)[1].strip()
+
+                elif line.startswith("Answers:") or line.startswith("Answer:"):
+                    quizzes[-1]['answer'] = line.split(":", 1)[1].strip()
+
+                elif line.startswith("Correct:" or line.startswith("Correct:")):
+                    quizzes[-1]['correct'] = line.split(":", 1)[1].strip()
+
+                elif line.startswith("-----") or line == "":
+                    continue
+
+                else:
+                    if 'material' in current_lesson:
+                        current_lesson['material'] += line + "\n"
+
+            if current_lesson:
+                cursor.execute("INSERT INTO Courses (course_id, lesson_name, material, type) VALUES (?, ?, ?, ?)",(course_id, current_lesson['name'], current_lesson.get('material', '').strip(), current_lesson['type']))
+                connection.commit()
+                lesson_id = cursor.lastrowid
+
+                for q in quizzes:
+                    cursor.execute("INSERT INTO Quizes (lesson_id, question, answer, correct) VALUES (?, ?, ?, ?)",(lesson_id, q['question'], q['answer'], q['correct']))
+                connection.commit()
+
+            messagebox.showinfo("Success", f"Course '{course_name}' and its content have been imported.")
+            update_courses_list()
+        else:
+            messagebox.showerror("Error", f"File '{filename}' not found.")
+    else:
+        messagebox.showinfo("Import Cancelled", "No file selected for import.")
 
 def back():
     global current_page,current_lesson_page
@@ -177,9 +312,11 @@ def back():
     frame_navigation.pack(frame_navigation.pack_info())
     btN.place(btB.place_info())
     btM.place(btEC.place_info())
-    btB.place_forget()
+    btIm.place(anchor=N, relx=.93, rely=.02)
     btLA.place_forget()
     btQA.place_forget()
+    btB.place_forget()
+    btEx.place_forget()
     btDC.place_forget()
     btEC.place_forget()
     update_courses_list()
@@ -405,7 +542,9 @@ def open_quiz(lesson):
         update_lesson_list(course_id)
 
     def change_quiz_page(index):
-        global quiz_navigation
+        global quiz_navigation, current_question
+        current_question = index
+
         if 0 <= index < len(quizzes):
             quiz_id, lesson_id, question, answer, correct = quizzes[index]
             questionlabel.config(text=f"Q{index + 1}: {question.strip()}")
@@ -565,7 +704,7 @@ def update_courses_list(Lesson_plans=None):
     column_count = 0
 
     for lessons in Lesson_plans:
-        lessons_id, lessons_name, _ = lessons
+        lessons_id, lessons_name = lessons
         course_button = Button(frame, text=lessons_name, command=lambda l=lessons: display_lessons(*l), width=30,padx=20, pady=20, font=20, relief=RIDGE, bd=5, bg=f, fg=b, activebackground=b,activeforeground=f)
         course_button.grid(row=row_count, column=column_count, padx=10, pady=10)
         column_count += 1
@@ -738,9 +877,11 @@ labelMain = Label(win, text="PYTUTOR", foreground=f, background=b, font=("impact
 labelMain.place(anchor=N, relx=.5, rely=.01)
 
 btN = Button(win, text="NEW", width=10, padx=20, pady=10, command=add_courses, relief=RAISED, bd=5, font="impact", bg=f, fg=b, activebackground=b,activeforeground=f)
-btN.place(anchor=N, relx=.08, rely=.02)
+btN.place(anchor=N, relx=.07, rely=.02)
 btM = Button(win, text="MENU", width=10, padx=20, pady=10, bg=f, fg=b, activebackground=b,activeforeground=f, command=openMenuWindow,relief=RAISED, bd=5, font="impact")
-btM.place(anchor=N, relx=.21, rely=.02)
+btM.place(anchor=N, relx=.2, rely=.02)
+btIm = Button(win, text="IMPORT", command=openImport, width=10, padx=20, pady=10, font="Impact", relief=RAISED, bd=5,bg=f, fg=b)
+btIm.place(anchor=N, relx=.93, rely=.02)
 
 prev_button = Button(win, text="⮜—",font=("Impact", 20), height=2, width=15,relief=RAISED, bd=5,command=previous_page, bg=f, fg=b, activebackground=b,activeforeground=f)
 prev_button.place(relx=.04, rely=.8)
